@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Exportar historial · SIBU{% endblock %}
+{% block content %}
+
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Exportar historial de atenciones</h1>
+    <small class="text-muted d-block">A una hoja de cálculo de Google compartida.</small>
+  </div>
+</div>
+
+{% comment %}
+El aviso va ARRIBA y no en letra pequeña al pie: quien pulsa el botón tiene que
+saber, antes de pulsarlo, que a partir de ahí el sistema no controla nada de lo
+que salga.
+{% endcomment %}
+<div class="alert alert-warning">
+  <strong>Lo que sale de aquí deja de estar bajo control de SIBU.</strong>
+  Con permiso de editor, quien reciba la hoja puede leerla, copiarla y
+  <em>modificarla</em>, y el sistema no registra quién la abre ni puede
+  revocarla. Compártala solo con quien deba tenerla.
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">Volcar a una hoja</div>
+      <div class="card-body">
+        {% if disponible %}
+        <form method="post" class="row g-2">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label small mb-0" for="enlace">Enlace de la hoja</label>
+            <input name="enlace" id="enlace" class="form-control form-control-sm"
+                   placeholder="https://docs.google.com/spreadsheets/d/…" required>
+            <div class="form-text">
+              Pegue el enlace tal como sale de la barra de direcciones. La hoja
+              debe estar compartida <strong>con permiso de editor</strong> con la
+              cuenta de servicio de SIBU.
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <label class="form-label small mb-0" for="desde">Desde</label>
+            <input type="date" name="desde" id="desde" class="form-control form-control-sm"
+                   value="{{ desde|date:'Y-m-d' }}">
+          </div>
+          <div class="col-6 col-md-4">
+            <label class="form-label small mb-0" for="hasta">Hasta</label>
+            <input type="date" name="hasta" id="hasta" class="form-control form-control-sm"
+                   value="{{ hasta|date:'Y-m-d' }}">
+          </div>
+          <div class="col-12">
+            <button class="btn btn-sm btn-primary">Volcar en la hoja</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="alert alert-secondary mb-0">
+          {{ motivo }}
+        </div>
+        <p class="small text-muted mt-2 mb-0">
+          La descarga en CSV, a la derecha, funciona sin credenciales: trae las
+          mismas filas y se sube a la hoja a mano.
+        </p>
+        {% endif %}
+
+        {% if url_hoja %}
+        <hr>
+        <a href="{{ url_hoja }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+          Abrir la hoja
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header">Qué saldría</div>
+      <div class="card-body">
+        {% comment %}
+        Escrito a mano y no con `pluralize`: el plural de «atención» pierde la
+        tilde, y `atención` + `es` da «atenciónes».
+        {% endcomment %}
+        <p class="mb-2">
+          <span class="fs-4 fw-semibold">{{ resumen.exportables }}</span>
+          {% if resumen.exportables == 1 %}atención{% else %}atenciones{% endif %}.
+        </p>
+        <a href="?formato=csv{% if desde %}&desde={{ desde|date:'Y-m-d' }}{% endif %}{% if hasta %}&hasta={{ hasta|date:'Y-m-d' }}{% endif %}"
+           class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-download"></i> Descargar en CSV
+        </a>
+        {% if resumen.retenidas_por_confidencialidad %}
+        <div class="alert alert-secondary small mb-0">
+          <i class="bi bi-shield-lock"></i>
+          <strong>{{ resumen.retenidas_por_confidencialidad }}</strong>
+          {% if resumen.retenidas_por_confidencialidad == 1 %}no se exporta{% else %}no se exportan{% endif %}:
+          son de un servicio confidencial y su contenido no sale de la Unidad.
+          El total de arriba ya las descuenta.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Columnas</div>
+      <div class="card-body">
+        <p class="small text-muted mb-2">
+          Gestión, no contenido: el motivo de consulta, los diagnósticos y las
+          notas no salen. En una hoja que se puede editar dejarían de tener
+          dueño.
+        </p>
+        <ul class="list-inline small mb-0">
+          {% for c in encabezados %}
+          <li class="list-inline-item"><span class="badge bg-light text-dark border">{{ c }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

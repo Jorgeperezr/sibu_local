@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}Ficha socioeconómica — SIBU{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 sibu-titulo mb-0">Ficha socioeconómica</h1>
+  <small class="text-muted d-block">
+    {{ expediente.persona.nombre_completo }} · Expediente {{ expediente.numero_expediente }}
+  </small>
+</div>
+
+{% if not vigente %}
+<div class="card">
+  <div class="card-body">
+    <p>Este expediente aún no tiene ficha socioeconómica.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="accion" value="prepoblar">
+      <button class="btn btn-primary">Pre-poblar desde la ficha de matrícula</button>
+      <div class="form-text">
+        Crea la v1 con lo que el estudiante declaró al matricularse. No inventa datos.
+      </div>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <span>Versión vigente: v{{ vigente.version }}</span>
+        <span class="badge bg-secondary">{{ vigente.get_origen_display }}</span>
+      </div>
+      <div class="card-body">
+        {% comment %}
+        `is not None` y no `{% if vigente.puntaje %}`: un puntaje de 0,00 SBU
+        es falsy, así que el recuadro NO se pintaba, y 0,00 es exactamente
+        «extrema vulnerabilidad» —un hogar que no declara ingresos—. El aviso
+        rojo faltaba justo en el único caso que lo necesita.
+        {% endcomment %}
+        {% if vigente.puntaje is not None %}
+        <div class="alert {% if vigente.estrato == 'Extrema vulnerabilidad' %}alert-danger{% elif vigente.estrato == 'Vulnerabilidad alta' %}alert-warning{% else %}alert-secondary{% endif %} py-2">
+          <strong>{{ vigente.puntaje|numero }} SBU</strong> per cápita — {{ vigente.estrato }}
+        </div>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="verificar">
+          {% comment %}
+          Las casillas salen rellenas con lo que la ficha tiene hoy. Antes salían
+          vacías y el formulario reconstruía el diccionario entero, así que
+          guardar sin tocar nada dejaba los ingresos en blanco y el puntaje en
+          cero. Lo que se ve es lo que se guarda.
+          {% endcomment %}
+          <h6 class="small text-uppercase text-muted">Ingresos del hogar (mensuales, USD)</h6>
+          <div class="row g-2 mb-3">
+            {% for c in ingresos %}
+            <div class="col-6 col-xl-4">
+              <label class="form-label small mb-0" for="ingreso-{{ c.clave }}">{{ c.etiqueta }}</label>
+              <input id="ingreso-{{ c.clave }}" name="ingreso-{{ c.clave }}" value="{{ c.valor }}"
+                     class="form-control form-control-sm" inputmode="decimal">
+            </div>
+            {% endfor %}
+          </div>
+          <h6 class="small text-uppercase text-muted">Egresos del hogar (mensuales, USD)</h6>
+          <div class="row g-2 mb-3">
+            {% for c in egresos %}
+            <div class="col-6 col-xl-4">
+              <label class="form-label small mb-0" for="egreso-{{ c.clave }}">{{ c.etiqueta }}</label>
+              <input id="egreso-{{ c.clave }}" name="egreso-{{ c.clave }}" value="{{ c.valor }}"
+                     class="form-control form-control-sm" inputmode="decimal">
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mb-3" style="max-width:220px">
+            <label class="form-label small">Miembros del hogar</label>
+            <input type="number" name="numero_miembros" class="form-control form-control-sm"
+                   min="1" value="{{ vigente.convivencia.numero_miembros|default:1 }}">
+          </div>
+          <button class="btn btn-primary">Registrar verificación</button>
+          <div class="form-text">
+            Crea una versión nueva. La anterior se conserva como histórico auditable.
+            Vaciar una casilla borra ese dato en la versión nueva.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">Historial de versiones</div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for f in historial %}
+          <li class="list-group-item {% if f.vigente %}bg-light{% endif %}">
+            <div class="d-flex justify-content-between">
+              <strong class="small">v{{ f.version }}{% if f.vigente %} · vigente{% endif %}</strong>
+              <span class="small text-muted">{{ f.creado_en|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="small text-muted">
+              {{ f.get_origen_display }}
+              {% if f.puntaje is not None %} · {{ f.puntaje|numero }} SBU · {{ f.estrato }}{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    {% comment %}
+    Declarado por el estudiante en matrícula. Se muestra en solo lectura: aquí
+    no se corrige una declaración suya, y verla es lo que evita volver a
+    preguntar lo que ya contestó al matricularse.
+    {% endcomment %}
+    {% for g in informativos %}
+    <div class="card mt-3">
+      <div class="card-header py-2"><small>{{ g.titulo }}</small></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 small">
+            <tbody>
+              {% for f in g.filas %}
+              <tr><th class="fw-normal text-muted ps-3">{{ f.etiqueta }}</th><td>{{ f.valor }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

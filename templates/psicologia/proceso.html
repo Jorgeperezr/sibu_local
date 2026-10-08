@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Proceso psicológico — SIBU{% endblock %}
+{% block content %}
+
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-1">{{ ficha.atencion.expediente.persona.nombre_completo }}</h1>
+    <p class="text-muted mb-0 small">
+      Expediente {{ ficha.atencion.expediente.numero_expediente }} ·
+      Proceso {{ ficha.get_estado_proceso_display }} ·
+      {{ ficha.get_modalidad_display }}
+    </p>
+  </div>
+  <span class="badge bg-dark-subtle text-dark border">
+    <i class="bi bi-shield-lock"></i> Confidencial
+  </span>
+</div>
+
+{% if es_alto %}
+<div class="alert alert-danger">
+  <strong>Riesgo ALTO.</strong> Se notificó al coordinador de sección
+  <em>sin detallar el contenido clínico</em>.
+  {% if ficha.nota_riesgo %}<div class="small mt-1">{{ ficha.nota_riesgo }}</div>{% endif %}
+</div>
+{% endif %}
+
+{% if ficha.atencion.inmutable %}
+<div class="alert alert-secondary py-2">Atención firmada: no admite cambios.</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header">Ficha</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="ficha">
+          <div class="mb-2">
+            <label class="form-label small">Motivo</label>
+            <p class="small text-muted mb-1">{{ ficha.motivo }}</p>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Historia del problema</label>
+            <textarea name="historia_problema" class="form-control form-control-sm" rows="3">{{ ficha.historia_problema }}</textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Impresión diagnóstica</label>
+            <input name="impresion_diagnostica" class="form-control form-control-sm"
+                   value="{{ ficha.impresion_diagnostica }}" maxlength="255">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Plan terapéutico</label>
+            <textarea name="plan_terapeutico" class="form-control form-control-sm" rows="3">{{ ficha.plan_terapeutico }}</textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Modalidad</label>
+            <select name="modalidad" class="form-select form-select-sm">
+              {% for v, etiqueta in modalidades %}
+              <option value="{{ v }}" {% if ficha.modalidad == v %}selected{% endif %}>{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-sm btn-primary" {% if ficha.atencion.inmutable %}disabled{% endif %}>
+            Guardar ficha
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Diagnósticos (CIE-10)</div>
+      <ul class="list-group list-group-flush">
+        {% for d in diagnosticos %}
+        <li class="list-group-item">
+          <strong>{{ d.cie10.codigo }}</strong> {{ d.cie10.descripcion|truncatechars:50 }}
+          <br><small class="text-muted">{{ d.get_tipo_display }}</small>
+          {% if d.principal %}<span class="badge bg-primary">Principal</span>{% endif %}
+        </li>
+        {% empty %}
+          <li class="list-group-item text-muted">Sin diagnósticos codificados.</li>
+        {% endfor %}
+      </ul>
+      {% if not ficha.atencion.inmutable %}
+      <div class="card-body border-top">
+        {% comment %}
+        Distinto de "Impresión diagnóstica" de arriba, que es texto libre: esto
+        codifica en CIE-10 para las estadísticas del servicio. Uno no
+        reemplaza al otro.
+        {% endcomment %}
+        <form method="post" class="row g-2">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="diagnostico">
+          <div class="col-12">
+            {% comment %}
+            En una fila propia: "Código o nombre CIE-10" no cabía legible
+            junto al tipo y al botón en una columna angosta.
+            {% endcomment %}
+            <input name="cie10" list="lista-cie10-psico" class="form-control form-control-sm"
+                   placeholder="Código o nombre CIE-10" required autocomplete="off">
+            <datalist id="lista-cie10-psico">
+              {% for c in cie10_disponibles %}
+                <option value="{{ c.codigo }}">{{ c.codigo }} — {{ c.descripcion }}</option>
+              {% endfor %}
+            </datalist>
+          </div>
+          <div class="col-8">
+            <select name="tipo" class="form-select form-select-sm">
+              {% for val, lbl in tipos_dx %}<option value="{{ val }}">{{ lbl }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-4">
+            <button class="btn btn-sm btn-outline-primary w-100">Agregar</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Escalas psicométricas</div>
+      <div class="card-body">
+        <form method="post" class="row g-2 align-items-end mb-3">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="escala">
+          <div class="col-7">
+            <label class="form-label small">Escala</label>
+            <select name="escala" class="form-select form-select-sm" required>
+              <option value="">—</option>
+              {% for e in catalogo %}
+              <option value="{{ e.codigo }}">{{ e.codigo }} ({{ e.puntaje_min }}–{{ e.puntaje_max }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-3">
+            <label class="form-label small">Puntaje</label>
+            <input type="number" name="puntaje" class="form-control form-control-sm" required>
+          </div>
+          <div class="col-2">
+            <button class="btn btn-sm btn-outline-primary w-100"
+                    {% if ficha.atencion.inmutable %}disabled{% endif %}>Aplicar</button>
+          </div>
+        </form>
+        {% if escalas_aplicadas %}
+        <ul class="list-group list-group-flush small">
+          {% for a in escalas_aplicadas %}
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span>{{ a.escala }} — <strong>{{ a.puntaje }}</strong> {{ a.interpretacion }}</span>
+            <span>
+              {% if a.alerta %}<span class="badge bg-danger">Alerta</span>{% endif %}
+              <span class="text-muted">{{ a.fecha|date:"d/m/Y" }}</span>
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted small mb-0">Sin escalas aplicadas.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Riesgo</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="riesgo">
+          <div class="mb-2">
+            <select name="nivel" class="form-select form-select-sm">
+              {% for v, etiqueta in niveles %}
+              <option value="{{ v }}" {% if ficha.riesgo_nivel == v %}selected{% endif %}>{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <textarea name="nota" class="form-control form-control-sm" rows="2"
+                      placeholder="Sustento clínico (obligatorio)">{{ ficha.nota_riesgo }}</textarea>
+          </div>
+          <button class="btn btn-sm btn-outline-danger">Actualizar riesgo</button>
+          <div class="form-text">Marcar ALTO notifica al coordinador sin revelar el contenido.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header">Nueva sesión (será la #{{ sesiones.count|add:1 }})</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="sesion">
+          <div class="mb-2">
+            <label class="form-label small">Evolución <span class="text-danger">*</span></label>
+            <textarea name="evolucion" class="form-control form-control-sm" rows="4" required></textarea>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small">Temas</label>
+              <input name="temas" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Técnicas</label>
+              <input name="tecnicas" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Tareas</label>
+              <input name="tareas" class="form-control form-control-sm">
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Próxima sesión</label>
+              <input type="date" name="proxima_sesion" class="form-control form-control-sm">
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary mt-2"
+                  {% if ficha.atencion.inmutable %}disabled{% endif %}>Registrar sesión</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Sesiones ({{ sesiones.count }})</div>
+      <div class="card-body p-0">
+        {% if sesiones %}
+        <div class="list-group list-group-flush">
+          {% for s in sesiones %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <strong class="small">Sesión {{ s.numero }} — {{ s.fecha|date:"d/m/Y" }}</strong>
+              <span class="text-muted small">{{ s.profesional.usuario.get_full_name|default:"—" }}</span>
+            </div>
+            <p class="mb-1 small">{{ s.evolucion|linebreaksbr }}</p>
+            {% if s.temas or s.tecnicas %}
+            <div class="small text-muted">
+              {% if s.temas %}<em>Temas:</em> {{ s.temas }}{% endif %}
+              {% if s.tecnicas %} · <em>Técnicas:</em> {{ s.tecnicas }}{% endif %}
+            </div>
+            {% endif %}
+            {% if s.tareas %}<div class="small text-muted"><em>Tareas:</em> {{ s.tareas }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small p-3 mb-0">Sin sesiones registradas.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Cerrar proceso</div>
+      <div class="card-body">
+        <form method="post" class="row g-2 align-items-end">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="cerrar">
+          <div class="col-8">
+            <select name="estado" class="form-select form-select-sm">
+              {% for v, etiqueta in estados_cierre %}
+              <option value="{{ v }}">{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-4">
+            <button class="btn btn-sm btn-outline-secondary w-100"
+                    {% if ficha.atencion.inmutable %}disabled{% endif %}>Cerrar</button>
+          </div>
+        </form>
+        <div class="form-text">Requiere al menos una sesión registrada.</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

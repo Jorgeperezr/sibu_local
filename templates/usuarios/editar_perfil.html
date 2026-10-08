@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}{{ perfil.usuario.get_full_name|default:perfil.usuario.username }} · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">
+      {{ perfil.usuario.get_full_name|default:perfil.usuario.username }}
+    </h1>
+    <small class="text-muted d-block">{{ perfil.usuario.username }}</small>
+  </div>
+  <a href="{% url 'usuarios:gestion_perfiles' %}" class="btn btn-sm btn-outline-secondary">
+    Volver
+  </a>
+</div>
+
+{% comment %}
+Aquí se concede acceso, no se rellenan campos. Por eso la pantalla dice qué
+abre cada casilla en vez de limitarse a listarlas, y los servicios sellados van
+marcados: asignar Psicología da acceso a su contenido clínico, que es lo único
+del sistema que no se puede deshacer mirando después la bitácora.
+{% endcomment %}
+<div class="alert alert-secondary small">
+  Asignar un servicio <strong>concede acceso</strong> a lo que ese servicio
+  atiende. Todo cambio queda en la bitácora con lo que entró y lo que salió.
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header">Servicios en los que atiende</div>
+    <div class="card-body">
+      <div class="row g-2">
+        {% for s in servicios %}
+        <div class="col-md-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="servicios"
+                   value="{{ s.id }}" id="serv-{{ s.id }}"
+                   {% if s.id in mis_servicios %}checked{% endif %}>
+            <label class="form-check-label" for="serv-{{ s.id }}">
+              {{ s.nombre }}
+              {% if s.codigo in confidenciales %}
+              <span class="badge bg-warning-subtle text-warning-emphasis border"
+                    title="Su contenido clínico no sale del servicio">sellado</span>
+              {% endif %}
+            </label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="form-text mt-2">
+        Sin ningún servicio marcado no aparecerá en ninguna bandeja.
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Sección, rol y firma</div>
+    <div class="card-body row g-3">
+      <div class="col-md-4">
+        <label class="form-label" for="f-seccion">Sección</label>
+        <select name="seccion" id="f-seccion" class="form-select">
+          <option value="">— sin sección —</option>
+          {% for s in secciones %}
+          <option value="{{ s.id }}" {% if perfil.seccion_id == s.id %}selected{% endif %}>
+            {{ s.nombre }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="f-rol">Rol</label>
+        <select name="rol" id="f-rol" class="form-select">
+          {% for valor, etiqueta in roles %}
+          <option value="{{ valor }}"
+                  {% if perfil.usuario.rol_principal == valor %}selected{% endif %}>
+            {{ etiqueta }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label d-block">Firma digital</label>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="firma" value="1"
+                 id="f-firma" {% if perfil.puede_firmar_digital %}checked{% endif %}>
+          <label class="form-check-label" for="f-firma">Puede firmar documentos</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary">Guardar</button>
+</form>
+
+<div class="card mt-3">
+  <div class="card-header">Horario</div>
+  <div class="card-body">
+    {% if franjas %}
+    <p class="mb-0">
+      Tiene {{ franjas }} {{ franjas|plural:"franja,franjas" }} activas.
+    </p>
+    {% else %}
+    <p class="mb-0 text-danger">
+      <strong>Sin horario: no se le puede reservar ninguna cita.</strong>
+    </p>
+    {% endif %}
+    <div class="form-text">
+      {% comment %}
+      El horario es autoservicio y se dice aquí para que nadie lo busque en
+      esta pantalla: quien atiende declara sus propios días y su duración de
+      consulta, que es lo que decide los turnos que verá ventanilla.
+      {% endcomment %}
+      El horario lo declara cada profesional desde <em>Mi horario</em>; desde
+      aquí no se cambia.
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Triaje · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Triaje / Signos vitales</h1>
+    <small class="text-muted">{{ persona.nombre_completo }} · {{ persona.cedula }}</small>
+  </div>
+  <a href="{% url 'expediente:detalle' expediente.id %}" class="btn btn-sm btn-outline-secondary">
+    Ver expediente
+  </a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Registrar toma</div>
+  <div class="card-body">
+    <form method="post" class="row g-3">
+      {% csrf_token %}
+      <div class="col-6 col-md-3">
+        <label class="form-label">Temperatura (°C)</label>
+        <input type="number" step="0.1" name="temperatura" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">FC (lpm)</label>
+        <input type="number" name="fc" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">FR (rpm)</label>
+        <input type="number" name="fr" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Sat. O₂ (%)</label>
+        <input type="number" name="sat_o2" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">PA sistólica</label>
+        <input type="number" name="pa_sistolica" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">PA diastólica</label>
+        <input type="number" name="pa_diastolica" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Peso (kg)</label>
+        <input type="number" step="0.01" name="peso" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Talla (m)</label>
+        <input type="number" step="0.01" name="talla" class="form-control">
+        <div class="form-text">El IMC se calcula solo.</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Perímetro abd. (cm)</label>
+        <input type="number" name="perimetro_abdominal" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Glicemia capilar</label>
+        <input type="number" name="glicemia_capilar" class="form-control">
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary">Registrar signos vitales</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Tomas de hoy</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead class="table-light">
+        <tr><th>Hora</th><th>T°</th><th>FC</th><th>FR</th><th>PA</th>
+            <th>SatO₂</th><th>IMC</th><th>Responsable</th></tr>
+      </thead>
+      <tbody>
+        {% for s in signos_hoy %}
+        <tr>
+          <td>{{ s.fecha_hora|date:"H:i" }}</td>
+          <td>{{ s.temperatura|default:"—" }}</td>
+          <td>{{ s.fc|default:"—" }}</td>
+          <td>{{ s.fr|default:"—" }}</td>
+          <td>{% if s.pa_sistolica %}{{ s.pa_sistolica }}/{{ s.pa_diastolica }}{% else %}—{% endif %}</td>
+          <td>{{ s.sat_o2|default:"—" }}</td>
+          <td>{{ s.imc|default:"—" }}</td>
+          <td><small>{{ s.responsable.usuario.get_full_name|default:"—" }}</small></td>
+        </tr>
+        {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-3">Sin tomas registradas hoy.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

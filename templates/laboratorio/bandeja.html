@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Laboratorio · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera"><h1 class="h4 sibu-titulo mb-0">Bandeja de laboratorio</h1>
+  {% include "_exportar_servicio.html" with codigo="laboratorio-clinico" %}
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th><th>Paciente</th><th>Solicitado por</th>
+          <th>Prioridad</th><th>Estado</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in ordenes %}
+        <tr {% if o.prioridad == 'urgente' %}class="table-warning"{% endif %}>
+          <td>{{ o.id }}</td>
+          <td>
+            {{ o.atencion.expediente.persona.nombre_completo }}
+            <br><small class="text-muted">{{ o.atencion.expediente.persona.cedula }}</small>
+          </td>
+          <td><small>{{ o.atencion.servicio.nombre }}</small></td>
+          <td>
+            {% if o.prioridad == 'urgente' %}
+              <span class="badge bg-danger">Urgente</span>
+            {% else %}
+              <span class="badge bg-secondary">Rutina</span>
+            {% endif %}
+          </td>
+          <td><span class="badge bg-info text-dark">{{ o.get_estado_display }}</span></td>
+          <td><a href="{% url 'laboratorio:detalle' o.id %}" class="btn btn-sm btn-outline-primary">Abrir</a></td>
+        </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Sin órdenes pendientes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+</div>
+</div>
+{% endblock %}

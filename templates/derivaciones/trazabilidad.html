@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Trazabilidad — SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">Recorrido del paciente</h1>
+<p class="text-muted">
+  {{ expediente.persona.nombre_completo }} · Expediente {{ expediente.numero_expediente }}
+</p>
+
+{% if traza %}
+<ul class="list-group">
+  {% for t in traza %}
+  <li class="list-group-item">
+    <div class="d-flex justify-content-between">
+      <div>
+        <strong>{{ t.desde }}</strong>
+        <i class="bi bi-arrow-right mx-1 text-muted"></i>
+        <strong>{{ t.hacia }}</strong>
+        {% if t.confidencial %}
+        <i class="bi bi-shield-lock text-muted ms-1" title="Servicio confidencial"></i>
+        {% endif %}
+        {% if t.prioridad == "urgente" %}<span class="badge bg-danger ms-1">Urgente</span>{% endif %}
+      </div>
+      <span class="badge bg-light text-dark border">{{ t.estado }}</span>
+    </div>
+    <div class="small text-muted mt-1">{{ t.motivo }} · {{ t.fecha|date:"d/m/Y H:i" }}</div>
+    {% if t.confidencial %}
+    <div class="small text-muted fst-italic">
+      El contenido de este servicio no es visible fuera de él.
+    </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-muted">Este paciente no ha sido derivado entre servicios.</p>
+{% endif %}
+{% endblock %}

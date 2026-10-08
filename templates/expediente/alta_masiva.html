@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Registrar varias cédulas · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Registrar varias cédulas</h1>
+    <small class="text-muted d-block">
+      Abre el expediente de cada una, en una sola pasada.
+    </small>
+  </div>
+  <a href="{% url 'expediente:buscar' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-search"></i> Buscar una sola
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <label class="form-label" for="cedulas">Cédulas</label>
+          <textarea id="cedulas" name="cedulas" class="form-control font-monospace"
+                    rows="12" required
+                    placeholder="1104567894&#10;1101002002&#10;110300400">{{ cedulas|default:'' }}</textarea>
+          <div class="form-text">
+            Una por línea, o separadas por comas, espacios o punto y coma: se
+            aceptan las tres, porque una lista se trae de donde se trae.
+            De <strong>nueve o diez dígitos</strong>: con nueve se antepone el
+            cero que Excel se come al tratar la cédula como número.
+            Hasta {{ maximo }} por tanda.
+          </div>
+          <button class="btn btn-primary mt-3">Registrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    {% if resultado %}
+    <div class="card">
+      <div class="card-header">
+        Resultado de {{ resultado.total }} cédula{{ resultado.total|pluralize:"s" }}
+      </div>
+      <div class="card-body py-2">
+        <div class="row text-center">
+          <div class="col">
+            <div class="h4 mb-0 text-success">{{ resultado.resumen.abierto }}</div>
+            <small class="text-muted">Abiertos</small>
+          </div>
+          <div class="col">
+            <div class="h4 mb-0">{{ resultado.resumen.existente }}</div>
+            <small class="text-muted">Ya existían</small>
+          </div>
+          <div class="col">
+            <div class="h4 mb-0 text-warning">{{ resultado.resumen.desconocida }}</div>
+            <small class="text-muted">Sin datos</small>
+          </div>
+          <div class="col">
+            <div class="h4 mb-0 text-danger">{{ resultado.resumen.invalida }}</div>
+            <small class="text-muted">Inválidas</small>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive border-top">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr><th>Cédula</th><th>Persona</th><th>Resultado</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for f in resultado.filas %}
+            <tr>
+              <td class="font-monospace">
+                {{ f.cedula }}
+                {% if f.original != f.cedula %}
+                  {% comment %}
+                  Se enseña en qué se convirtió lo que la persona pegó. Un cero
+                  antepuesto en silencio haría dudar de si el sistema registró
+                  la cédula que se le dio.
+                  {% endcomment %}
+                  <br><small class="text-muted">pegó: {{ f.original }}</small>
+                {% endif %}
+              </td>
+              <td>{{ f.persona.nombre_completo|default:"—" }}</td>
+              <td>
+                {% if f.estado == "abierto" %}
+                  <span class="badge bg-success">Expediente abierto</span>
+                {% elif f.estado == "existente" %}
+                  <span class="badge bg-light text-dark border">Ya lo tenía</span>
+                {% elif f.estado == "desconocida" %}
+                  <span class="badge bg-warning text-dark">Sin datos</span>
+                {% else %}
+                  <span class="badge bg-danger">Inválida</span>
+                {% endif %}
+                {% if f.detalle %}<div class="small text-muted">{{ f.detalle }}</div>{% endif %}
+              </td>
+              <td class="text-end text-nowrap">
+                {% if f.expediente %}
+                  <a href="{% url 'expediente:detalle' f.expediente.pk %}"
+                     class="btn btn-sm btn-outline-primary">Abrir</a>
+                {% elif f.estado == "desconocida" %}
+                  <a href="{% url 'expediente:nuevo' %}?cedula={{ f.cedula }}"
+                     class="btn btn-sm btn-outline-secondary">Registrar</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary mb-0">
+      <p class="mb-2"><strong>Qué hace y qué no.</strong></p>
+      <p class="small mb-2">
+        Cada cédula se resuelve contra la base institucional. Si consta ahí, se
+        abre su expediente con el nombre que la Universidad tiene registrado.
+      </p>
+      <p class="small mb-0">
+        Una cédula válida que <em>no</em> conste no se registra con el nombre en
+        blanco: un expediente sin nombre no identifica a nadie y ensucia el
+        padrón para siempre. Se lista aparte, con un enlace para completar su
+        alta a mano.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

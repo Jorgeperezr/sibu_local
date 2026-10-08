@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Ingresar — SIBU{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12">
+    <div class="text-center mb-4">
+      <img src="{% static 'img/unl-horizontal.png' %}" alt="Universidad Nacional de Loja"
+           style="max-width:290px;width:100%;height:auto">
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h5 mb-1">Ingresar</h1>
+        <p class="text-muted small mb-3">Sistema Integral de Bienestar Universitario</p>
+
+        {% if form.errors %}
+        <div class="alert alert-danger py-2 small mb-2">
+          Usuario o contraseña incorrectos. Verifique e intente de nuevo.
+        </div>
+          {% if es_desarrollo %}
+          {% comment %}
+          Solo en desarrollo. En el servidor real esta pista sería una
+          filtración: le diría a cualquiera que hay cuentas de prueba.
+
+          Aparece aquí porque es donde uno está cuando se queda fuera. El aviso
+          equivalente ya salía al arrancar, varias pantallas más arriba de la
+          terminal, y para cuando hace falta ya se perdió.
+          {% endcomment %}
+          <div class="alert alert-secondary py-2 small">
+            <strong>Entorno de desarrollo.</strong>
+            Para ver qué cuentas existen y con qué contraseña:
+            <code>make cuentas</code> en la terminal.
+            Si su base ya tenía datos de antes, las cuentas de prueba se
+            recrean con <code>make demo</code>.
+          </div>
+          {% endif %}
+        {% endif %}
+
+        {% if next and user.is_authenticated %}
+        <div class="alert alert-warning py-2 small">
+          Su cuenta no tiene permiso para acceder a esa página.
+        </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_username" class="form-label">Usuario</label>
+            <input type="text" name="username" id="id_username" class="form-control"
+                   autofocus autocomplete="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_password" class="form-label">Contraseña</label>
+            <input type="password" name="password" id="id_password" class="form-control"
+                   autocomplete="current-password" required>
+          </div>
+          <input type="hidden" name="next" value="{{ next }}">
+          <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+        </form>
+      </div>
+    </div>
+    <p class="text-center text-muted small mt-3">
+      ¿Problemas para ingresar? Acérquese a la Unidad de Bienestar Universitario.
+    </p>
+  </div>
+</div>
+{% endblock %}

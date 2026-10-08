@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}Perfiles · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Perfiles</h1>
+    <small class="text-muted d-block">
+      Quién atiende, en qué servicio, con qué rol y si tiene horario.
+    </small>
+  </div>
+</div>
+
+{% comment %}
+La columna del horario es la que evita el desconcierto más común: un
+profesional bien dado de alta y sin franjas NO admite ninguna cita, y hasta
+ahora nada en su ficha lo advertía.
+{% endcomment %}
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-5">
+    <input name="q" value="{{ q }}" class="form-control"
+           placeholder="Nombre, usuario o cédula">
+  </div>
+  <div class="col-md-4">
+    <select name="seccion" class="form-select">
+      <option value="">Todas las secciones</option>
+      {% for s in secciones %}
+      <option value="{{ s.id }}" {% if seccion == s.id|stringformat:"s" %}selected{% endif %}>
+        {{ s.nombre }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 d-grid">
+    <button class="btn btn-outline-primary">Filtrar</button>
+  </div>
+</form>
+
+<div class="card mb-3">
+  <div class="card-header">
+    {{ perfiles|length }} {{ perfiles|length|plural:"profesional,profesionales" }}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Profesional</th><th>Sección</th><th>Servicios</th>
+          <th>Rol</th><th>Horario</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in perfiles %}
+        <tr>
+          <td>
+            {{ p.usuario.get_full_name|default:p.usuario.username }}
+            <div class="small text-muted">{{ p.usuario.username }}</div>
+          </td>
+          <td class="small">{{ p.seccion.nombre|default:"— sin sección —" }}</td>
+          <td class="small">
+            {% for s in p.servicios.all %}
+            <span class="badge {% if s.codigo in confidenciales %}bg-warning-subtle text-warning-emphasis{% else %}bg-light text-body{% endif %} border">
+              {{ s.nombre }}
+            </span>
+            {% empty %}
+            <span class="text-danger">ninguno</span>
+            {% endfor %}
+          </td>
+          <td class="small">{{ p.usuario.get_rol_principal_display }}</td>
+          <td>
+            {% if p.franjas %}
+              <span class="text-muted small">
+                {{ p.franjas }} {{ p.franjas|plural:"franja,franjas" }}
+              </span>
+            {% else %}
+              {% comment %}
+              Sin franjas no se le puede reservar: es un dato de gestión, no un
+              adorno, y por eso va marcado y no en gris como el resto.
+              {% endcomment %}
+              <span class="badge bg-danger-subtle text-danger-emphasis border"
+                    title="Sin horario no se le puede reservar ninguna cita">sin horario</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'usuarios:editar_perfil' p.pk %}"
+               class="btn btn-sm btn-outline-primary">Editar</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">
+          Ningún profesional con ese filtro.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if sin_perfil %}
+<div class="card">
+  <div class="card-header">
+    Cuentas sin ficha profesional
+    <small class="text-muted">
+      — no salen en ninguna bandeja ni admiten cita
+    </small>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light"><tr><th>Cuenta</th><th>Rol</th><th></th></tr></thead>
+      <tbody>
+        {% for u in sin_perfil %}
+        <tr>
+          <td>
+            {{ u.get_full_name|default:u.username }}
+            <span class="small text-muted">{{ u.username }}</span>
+          </td>
+          <td class="small">{{ u.get_rol_principal_display }}</td>
+          <td class="text-end">
+            <form method="post" action="{% url 'usuarios:alta_perfil' u.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-secondary"
+                      title="Le crea la ficha para que pueda atender">Dar ficha</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

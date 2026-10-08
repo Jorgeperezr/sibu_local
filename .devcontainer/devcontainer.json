@@ -1,0 +1,31 @@
+{
+  "name": "SIBU - UNL",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "web",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [8000],
+  "portsAttributes": { "8000": { "label": "Django", "onAutoForward": "notify" } },
+  "postCreateCommand": "pip install --no-cache-dir -r requirements/dev.txt",
+  "postStartCommand": "python manage.py migrate --noinput || true",
+  "postAttachCommand": "echo '\n  SIBU listo. Para levantar la página:  make up\n  Credenciales:                        make cuentas\n'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "batisteo.vscode-django",
+        "charliermarsh.ruff",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "eamodio.gitlens",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "[python]": { "editor.defaultFormatter": "charliermarsh.ruff", "editor.formatOnSave": true }
+      }
+    }
+  },
+  "remoteEnv": { "DJANGO_SETTINGS_MODULE": "config.settings.dev" }
+}

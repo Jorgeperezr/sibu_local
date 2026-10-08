@@ -1,0 +1,78 @@
+# Despliegue de producción: base de datos, aplicación y proxy.
+#
+#   cp .env.prod.example .env.prod   (y complételo)
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# El `--env-file` no es opcional. `env_file:` alimenta al CONTENEDOR, pero los
+# `${...}` de este fichero los resuelve el propio compose y para eso solo mira
+# el entorno del shell y un `.env` en el directorio: sin `--env-file`, la
+# contraseña de la base está en `.env.prod` y aun así el arranque aborta
+# diciendo que no está definida.
+#
+# Comprobado de punta a punta antes de escribirlo: gunicorn detrás de nginx con
+# TLS, login por HTTPS, estáticos con manifiesto y las cabeceras de seguridad
+# que exige el navegador. Lo que aquí falta —el certificado— es lo único que
+# depende del dominio real.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sibu}
+      POSTGRES_USER: ${POSTGRES_USER:-sibu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD en .env.prod}
+    volumes:
+      - datos_db:/var/lib/postgresql/data
+    # Sin puertos publicados: la base no se expone a internet. La aplicación
+    # llega por la red interna de compose.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sibu}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DATABASE_URL: postgres://${POSTGRES_USER:-sibu}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-sibu}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - medios:/app/media
+      - registros:/app/logs
+    # `migrate` antes de servir, y `preparar` deja servicios, roles y catálogos.
+    # `--sin-demo` es redundante —`preparar` ya omite la siembra con DEBUG=False—
+    # y va escrito igualmente: si alguien despliega con DEBUG mal puesto, esta
+    # orden no es la que le crea cuentas con contraseñas conocidas.
+    # `check --deploy` va PRIMERO y aborta si la configuración no está: es el
+    # único momento en que un error de configuración sale barato.
+    command: >
+      sh -c "python manage.py check --deploy &&
+             python manage.py migrate --noinput &&
+             python manage.py preparar --si-cambio --sin-demo &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000
+                     --workers ${GUNICORN_WORKERS:-3} --timeout 60
+                     --access-logfile - --error-logfile -"
+
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on: [web]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/certs:/etc/nginx/certs:ro
+      - medios:/var/www/media:ro
+
+volumes:
+  datos_db:
+  medios:
+  registros:

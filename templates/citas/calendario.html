@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Calendario · SIBU{% endblock %}
+{% block content %}
+
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Calendario</h1>
+    <small class="text-muted d-block">
+      {% if perfil %}
+        {{ nombre_mes|capfirst }} de {{ anio }} · {{ total }} cita{{ total|pluralize }}
+        {% if perfil.usuario %}· {{ perfil.usuario.get_full_name|default:perfil.usuario.username }}{% endif %}
+      {% else %}
+        Su usuario no tiene perfil profesional, así que no hay agenda que mostrar.
+      {% endif %}
+    </small>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="?anio={{ anterior.year }}&mes={{ anterior.month }}"
+       class="btn btn-sm btn-outline-secondary" aria-label="Mes anterior">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+    <a href="{% url 'citas:calendario' %}" class="btn btn-sm btn-outline-secondary">Hoy</a>
+    <a href="?anio={{ siguiente.year }}&mes={{ siguiente.month }}"
+       class="btn btn-sm btn-outline-secondary" aria-label="Mes siguiente">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+    <a href="{% url 'citas:mi_agenda' %}" class="btn btn-sm btn-outline-primary">Agenda del día</a>
+    <a href="{% url 'citas:reservar' %}" class="btn btn-sm btn-primary">+ Reservar</a>
+  </div>
+</div>
+
+{% comment %}
+Conteos, no contenido: por cada día, cuántas citas hay y nada más. Ni paciente
+ni motivo. Un calendario que imprimiera el nombre haría innecesario abrir el
+día, y con eso se saltaría el control de acceso que vive en la agenda.
+{% endcomment %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-bordered mb-0 sibu-calendario">
+      <thead class="table-light">
+        <tr>
+          {% for dia in dias_semana %}<th class="text-center small">{{ dia }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for semana in semanas %}
+        <tr>
+          {% for d in semana %}
+          <td class="p-0 align-top {% if d.de_otro_mes %}bg-light{% endif %}">
+            <a href="{% url 'citas:mi_agenda' %}?fecha={{ d.fecha|date:'Y-m-d' }}{% if perfil %}&profesional={{ perfil.pk }}{% endif %}"
+               class="d-block p-2 text-decoration-none sibu-dia
+                      {% if d.es_hoy %}sibu-dia-hoy{% endif %}"
+               title="{{ d.fecha|date:'l j \d\e F' }}{% if d.citas %} — {{ d.citas }} cita{{ d.citas|pluralize }}{% endif %}">
+              <span class="small {% if d.de_otro_mes %}text-muted{% else %}fw-semibold{% endif %}">
+                {{ d.fecha.day }}
+              </span>
+              {% if d.citas %}
+              {% comment %}
+              Píldora, no barra: `d-block` la estiraba a todo el ancho y
+              parecía una barra de progreso en vez de un número.
+              {% endcomment %}
+              <span class="badge rounded-pill bg-primary mt-1">{{ d.citas }}</span>
+              {% endif %}
+            </a>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="small text-muted mt-2 mb-0">
+  El número es cuántas citas vivas hay ese día; las canceladas no cuentan.
+  Pulse un día para abrir su agenda con el detalle.
+</p>
+{% endblock %}

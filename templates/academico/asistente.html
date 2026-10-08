@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Carga de ficha socioeconómica · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Carga de la base institucional</h1>
+    <small class="text-muted d-block">
+      Ficha socioeconómica de matrícula. Suba el archivo, revise la
+      previsualización y confirme la aplicación.
+    </small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'academico:plantilla' %}?estamento={{ estamento|default:'estudiante' }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-download"></i> Plantilla CSV
+    </a>
+    <a href="{% url 'academico:diccionario' %}?estamento={{ estamento|default:'estudiante' }}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-list-columns"></i> Diccionario
+    </a>
+    <a href="{% url 'academico:padron' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-table"></i> Ver lo cargado
+    </a>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Período académico</label>
+        <select name="periodo" class="form-select" required>
+          <option value="">— Seleccione —</option>
+          {% for p in periodos %}<option value="{{ p.id }}">{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Estamento</label>
+        <select name="estamento" class="form-select" required>
+          <option value="">— Seleccione —</option>
+          {% for valor, etiqueta in estamentos %}
+            <option value="{{ valor }}" {% if estamento == valor %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">
+          A quién describe este archivo. Cada estamento tiene su propia base y
+          sus propias columnas: la del estudiante trae nivel, ciclo, paralelo y
+          jornada, y las de docentes, administrativos y trabajadores no. El
+          archivo no lo dice por sí solo, así que se declara aquí y queda
+          registrado en la bitácora de la carga.
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Archivo (.xlsx o .csv)</label>
+        <input type="file" name="archivo" class="form-control" accept=".xlsx,.csv" required>
+      </div>
+      <button name="accion" value="previsualizar" class="btn btn-outline-primary">Previsualizar</button>
+      <button name="accion" value="aplicar" class="btn btn-primary"
+              onclick="return confirm('¿Aplicar la carga? Esta acción escribe en la base de datos.')">
+        Aplicar carga
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if resultado %}
+<div class="card">
+  <div class="card-header">Resumen {% if aplicado %}(aplicado){% else %}(previsualización){% endif %}</div>
+  <div class="card-body">
+    <div class="row text-center">
+      <div class="col"><div class="h4">{{ resultado.total }}</div><small class="text-muted">Filas</small></div>
+      <div class="col"><div class="h4 text-success">{{ resultado.altas }}</div><small class="text-muted">Altas</small></div>
+      <div class="col"><div class="h4 text-info">{{ resultado.actualizaciones }}</div><small class="text-muted">Actualizaciones</small></div>
+      <div class="col"><div class="h4 text-danger">{{ resultado.errores }}</div><small class="text-muted">Errores</small></div>
+      <div class="col"><div class="h4 text-warning">{{ resultado.alertas_generadas }}</div><small class="text-muted">Alertas</small></div>
+    </div>
+    {% if resultado.detalle_errores %}
+      <hr><h6>Detalle de errores/avisos (primeros 200)</h6>
+      <ul class="small">{% for e in resultado.detalle_errores %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

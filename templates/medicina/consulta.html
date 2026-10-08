@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Consulta médica · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Consulta médica</h1>
+    <small class="text-muted">
+      {{ persona.nombre_completo }} · {{ persona.cedula }} ·
+      {{ atencion.fecha_hora|date:"d/m/Y H:i" }}
+      <span class="badge bg-secondary">{{ atencion.get_estado_display }}</span>
+    </small>
+  </div>
+  <a href="{% url 'expediente:detalle' atencion.expediente_id %}"
+     class="btn btn-sm btn-outline-secondary">Expediente</a>
+</div>
+
+{% if triaje %}
+<div class="alert alert-info py-2">
+  <strong>Triaje ({{ triaje.fecha_hora|date:"H:i" }}):</strong>
+  T° {{ triaje.temperatura|default:"—" }} ·
+  FC {{ triaje.fc|default:"—" }} ·
+  FR {{ triaje.fr|default:"—" }} ·
+  PA {% if triaje.pa_sistolica %}{{ triaje.pa_sistolica }}/{{ triaje.pa_diastolica }}{% else %}—{% endif %} ·
+  SatO₂ {{ triaje.sat_o2|default:"—" }} ·
+  IMC {{ triaje.imc|default:"—" }}
+</div>
+{% else %}
+<div class="alert alert-warning py-2">
+  Sin triaje reciente.
+  <a href="{% url 'enfermeria:triaje' atencion.expediente_id %}">Registrar signos vitales</a>.
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">Anamnesis y plan</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="guardar">
+          <div class="mb-3">
+            <label class="form-label">Motivo de consulta</label>
+            <input class="form-control" value="{{ atencion.motivo_consulta }}" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Enfermedad actual</label>
+            <textarea name="enfermedad_actual" rows="4" class="form-control"
+              {% if atencion.inmutable %}disabled{% endif %}>{{ hc.enfermedad_actual }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Plan de tratamiento</label>
+            <textarea name="plan_tratamiento" rows="3" class="form-control"
+              {% if atencion.inmutable %}disabled{% endif %}>{{ hc.plan_tratamiento }}</textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-8 mb-3">
+              <label class="form-label">Indicaciones</label>
+              <textarea name="indicaciones" rows="2" class="form-control"
+                {% if atencion.inmutable %}disabled{% endif %}>{{ hc.indicaciones }}</textarea>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Días de reposo</label>
+              <input type="number" name="dias_reposo" class="form-control"
+                     value="{{ hc.dias_reposo|default:'' }}"
+                     {% if atencion.inmutable %}disabled{% endif %}>
+            </div>
+          </div>
+          {% if not atencion.inmutable %}
+            <button class="btn btn-primary">Guardar</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header">Diagnósticos (CIE-10)</div>
+      <ul class="list-group list-group-flush">
+        {% for d in diagnosticos %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span>
+            <strong>{{ d.cie10.codigo }}</strong> {{ d.cie10.descripcion|truncatechars:40 }}
+            <br><small class="text-muted">{{ d.get_tipo_display }}</small>
+          </span>
+          {% if d.principal %}<span class="badge bg-primary">Principal</span>{% endif %}
+        </li>
+        {% empty %}
+          <li class="list-group-item text-muted">Sin diagnósticos.</li>
+        {% endfor %}
+      </ul>
+      {% if not atencion.inmutable %}
+      <div class="card-body border-top">
+        <form method="post" class="row g-2">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="diagnostico">
+          <div class="col-12">
+            {% comment %}
+            En una fila propia: "Código o nombre CIE-10" no cabía legible
+            junto al tipo y al botón en una columna angosta.
+            {% endcomment %}
+            <input name="cie10" list="lista-cie10" class="form-control form-control-sm"
+                   placeholder="Código o nombre CIE-10" required autocomplete="off">
+            {% comment %}
+            El catálogo que ofrece ya viene filtrado a lo que Medicina
+            diagnostica: no hay que elegir a ciegas entre miles de códigos
+            odontológicos o de salud mental que aquí no aplican.
+            {% endcomment %}
+            <datalist id="lista-cie10">
+              {% for c in cie10_disponibles %}
+                <option value="{{ c.codigo }}">{{ c.codigo }} — {{ c.descripcion }}</option>
+              {% endfor %}
+            </datalist>
+          </div>
+          <div class="col-8">
+            <select name="tipo" class="form-select form-select-sm">
+              <option value="presuntivo">Presuntivo</option>
+              <option value="definitivo">Definitivo</option>
+            </select>
+          </div>
+          <div class="col-4">
+            <button class="btn btn-sm btn-outline-primary w-100">Agregar</button>
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="principal" id="principal">
+              <label class="form-check-label small" for="principal">Diagnóstico principal</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Receta</div>
+      <div class="card-body">
+        {% for r in recetas %}
+          <div class="mb-2">
+            <span class="fw-semibold">{{ r.numero }}</span>
+            <span class="badge bg-secondary">{{ r.get_estado_display }}</span>
+            <ul class="small text-muted mb-0 ps-3">
+              {% for d in r.detalles.all %}
+                <li>{{ d.medicamento }} × {{ d.cantidad_prescrita }}{% if d.dosis %} — {{ d.dosis }}{% endif %}{% if d.frecuencia %}, {{ d.frecuencia }}{% endif %}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% empty %}
+          <p class="text-muted small mb-2">Sin recetas en esta atención.</p>
+        {% endfor %}
+
+        {% if editable %}
+        {% comment %}
+        Un medicamento por envío: la receta lleva varios y en consulta se añaden
+        de uno en uno. Si ya hay una receta abierta se le suma, y si no se emite
+        una nueva; lo decide la vista, no quien atiende.
+        {% endcomment %}
+        <form method="post" class="row g-2 border-top pt-3">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="recetar">
+          <div class="col-12">
+            <label class="form-label small" for="medicamento">Medicamento</label>
+            <select id="medicamento" name="medicamento" class="form-select form-select-sm" required>
+              <option value="">—</option>
+              {% for m in medicamentos %}
+                <option value="{{ m.pk }}">{{ m.dci }} {{ m.concentracion }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-4">
+            <label class="form-label small" for="cantidad">Cantidad</label>
+            <input id="cantidad" name="cantidad" type="number" min="1"
+                   class="form-control form-control-sm" required>
+          </div>
+          <div class="col-8">
+            <label class="form-label small" for="dosis">Dosis</label>
+            <input id="dosis" name="dosis" class="form-control form-control-sm"
+                   maxlength="120" placeholder="1 tableta">
+          </div>
+          <div class="col-6">
+            <label class="form-label small" for="frecuencia">Frecuencia</label>
+            <input id="frecuencia" name="frecuencia" class="form-control form-control-sm"
+                   maxlength="60" placeholder="cada 8 h">
+          </div>
+          <div class="col-6">
+            <label class="form-label small" for="duracion">Duración</label>
+            <input id="duracion" name="duracion" class="form-control form-control-sm"
+                   maxlength="60" placeholder="5 días">
+          </div>
+          <div class="col-12">
+            <button class="btn btn-sm btn-outline-primary">Añadir a la receta</button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Laboratorio</div>
+      <div class="card-body">
+        {% for o in ordenes %}
+          <div class="mb-2">
+            <span class="fw-semibold">Orden #{{ o.id }}</span>
+            <span class="badge bg-secondary">{{ o.get_estado_display }}</span>
+            <ul class="small text-muted mb-0 ps-3">
+              {% for oe in o.examenes.all %}<li>{{ oe.examen.nombre }}</li>{% endfor %}
+            </ul>
+          </div>
+        {% empty %}
+          <p class="text-muted small mb-2">Sin órdenes en esta atención.</p>
+        {% endfor %}
+
+        {% if editable %}
+        <form method="post" class="row g-2 border-top pt-3">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="examenes">
+          <div class="col-12">
+            <label class="form-label small" for="examenes">Exámenes</label>
+            <select id="examenes" name="examenes" class="form-select form-select-sm"
+                    multiple size="5" required>
+              {% for e in examenes_catalogo %}
+                <option value="{{ e.pk }}">{{ e.nombre }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Ctrl (o ⌘) para elegir varios.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small" for="prioridad">Prioridad</label>
+            <select id="prioridad" name="prioridad" class="form-select form-select-sm">
+              <option value="rutina">Rutina</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-sm btn-outline-primary">Solicitar exámenes</button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not atencion.inmutable %}
+    <form method="post"
+          onsubmit="return confirm('¿Cerrar la atención? Requiere un diagnóstico principal.')">
+      {% csrf_token %}
+      <input type="hidden" name="accion" value="cerrar">
+      <button class="btn btn-success w-100">Cerrar atención</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

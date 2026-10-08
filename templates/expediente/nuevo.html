@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Registrar persona — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Registrar persona</h1>
+  <a href="{% url 'expediente:buscar' %}" class="btn btn-sm btn-outline-secondary">Volver a buscar</a>
+</div>
+
+<p class="text-muted">
+  Se abre el expediente único de la persona. Si ya consta en la base
+  institucional, búsquela por cédula en lugar de registrarla aquí.
+  Solo <strong>cédula, nombres y apellidos</strong> son obligatorios: el resto
+  se guarda si lo tiene a mano y se puede completar después.
+</p>
+
+{% if datos.prellenado %}
+<div class="alert alert-info py-2">
+  Se completaron los datos que constan en la base institucional para la cédula
+  {{ datos.cedula }}. Revíselos antes de guardar.
+</div>
+{% endif %}
+
+<form method="post" class="card" style="max-width:820px">
+  {% csrf_token %}
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label" for="cedula">Cédula <span class="text-danger">*</span></label>
+        <input class="form-control" id="cedula" name="cedula" value="{{ datos.cedula|default:'' }}"
+               required maxlength="13" inputmode="numeric">
+        <div class="form-text">10 dígitos. Se valida con el módulo 10 ecuatoriano.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="tipo_documento">Tipo de documento</label>
+        <select class="form-select" id="tipo_documento" name="tipo_documento">
+          <option value="cedula">Cédula</option>
+          <option value="pasaporte" {% if datos.tipo_documento == "pasaporte" %}selected{% endif %}>
+            Pasaporte
+          </option>
+        </select>
+        <div class="form-text">El pasaporte no pasa por el módulo 10.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="tipo_vinculo">Vínculo con la UNL</label>
+        <select class="form-select" id="tipo_vinculo" name="tipo_vinculo">
+          {% for valor, etiqueta in vinculos %}
+          <option value="{{ valor }}" {% if datos.tipo_vinculo == valor %}selected{% endif %}>
+            {{ etiqueta }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="nombres">Nombres <span class="text-danger">*</span></label>
+        <input class="form-control" id="nombres" name="nombres" value="{{ datos.nombres|default:'' }}" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="apellidos">Apellidos <span class="text-danger">*</span></label>
+        <input class="form-control" id="apellidos" name="apellidos" value="{{ datos.apellidos|default:'' }}" required>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento</label>
+        <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento"
+               value="{{ datos.fecha_nacimiento|default:'' }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="sexo">Sexo</label>
+        <select class="form-select" id="sexo" name="sexo">
+          <option value="">—</option>
+          <option value="F" {% if datos.sexo == "F" %}selected{% endif %}>Femenino</option>
+          <option value="M" {% if datos.sexo == "M" %}selected{% endif %}>Masculino</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="celular">Celular</label>
+        <input class="form-control" id="celular" name="celular" value="{{ datos.celular|default:'' }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="correo_institucional">Correo institucional</label>
+        <input type="email" class="form-control" id="correo_institucional"
+               name="correo_institucional" value="{{ datos.correo_institucional|default:'' }}">
+        <div class="form-text">Es la vía de acceso al portal del estudiante.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="correo_personal">Correo personal</label>
+        <input type="email" class="form-control" id="correo_personal"
+               name="correo_personal" value="{{ datos.correo_personal|default:'' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="telefono">Teléfono fijo</label>
+        <input class="form-control" id="telefono" name="telefono"
+               value="{{ datos.telefono|default:'' }}">
+      </div>
+    </div>
+
+    {% comment %}
+    Lo demás va plegado y NADA de ello es obligatorio. Desplegado de golpe, el
+    formulario pasa de once casillas a más de treinta y el alta de una persona
+    en el mostrador se vuelve un trámite; plegado, quien tenga el dato lo
+    escribe y quien no, guarda igual.
+
+    Se usa <details> y no un acordeón de Bootstrap: funciona sin JavaScript,
+    así que no puede quedarse a medio abrir si el script no carga.
+    {% endcomment %}
+
+    <details class="mt-4">
+      <summary class="fw-semibold">Identidad y salud <span class="text-muted fw-normal">— opcional</span></summary>
+      <div class="row g-3 mt-1">
+        <div class="col-md-4">
+          <label class="form-label" for="genero">Género</label>
+          <input class="form-control" id="genero" name="genero"
+                 value="{{ datos.genero|default:'' }}" maxlength="30">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label" for="identidad_orientacion_sexual">
+            Identidad u orientación sexual
+          </label>
+          <input class="form-control" id="identidad_orientacion_sexual"
+                 name="identidad_orientacion_sexual" maxlength="60"
+                 value="{{ datos.identidad_orientacion_sexual|default:'' }}">
+          <div class="form-text">
+            Un solo ítem, y libre: entra en el informe estadístico del servicio.
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="grupo_sanguineo">Grupo sanguíneo</label>
+          <input class="form-control" id="grupo_sanguineo" name="grupo_sanguineo"
+                 maxlength="5" placeholder="O+"
+                 value="{{ datos.grupo_sanguineo|default:'' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="discapacidad_tipo">Tipo de discapacidad</label>
+          <input class="form-control" id="discapacidad_tipo" name="discapacidad_tipo"
+                 maxlength="60" value="{{ datos.discapacidad_tipo|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="discapacidad_porcentaje">Porcentaje</label>
+          <input type="number" min="0" max="100" class="form-control"
+                 id="discapacidad_porcentaje" name="discapacidad_porcentaje"
+                 value="{{ datos.discapacidad_porcentaje|default:'' }}">
+        </div>
+      </div>
+    </details>
+
+    {% for g in grupos %}
+    <details class="mt-3">
+      <summary class="fw-semibold">{{ g.titulo }} <span class="text-muted fw-normal">— opcional</span></summary>
+      <div class="row g-3 mt-1">
+        {% for c in g.casillas %}
+        <div class="col-md-4">
+          <label class="form-label" for="{{ c.nombre }}">{{ c.etiqueta }}</label>
+          <input class="form-control" id="{{ c.nombre }}" name="{{ c.nombre }}"
+                 value="{{ c.valor }}">
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  <div class="card-footer d-flex gap-2">
+    <button class="btn btn-primary">Registrar y abrir expediente</button>
+    <a href="{% url 'expediente:buscar' %}" class="btn btn-outline-secondary">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

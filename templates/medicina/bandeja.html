@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Medicina — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Medicina</h1>
+  <a href="{% url 'expediente:buscar' %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-search"></i> Buscar expediente
+  </a>
+  {% include "_exportar_servicio.html" with codigo="medicina" %}
+</div>
+
+{% if historias %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Paciente</th><th>Motivo</th><th>Profesional</th><th>Fecha</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in historias %}
+      <tr>
+        <td>{{ h.atencion.expediente.persona.nombre_completo }}</td>
+        <td class="small text-muted">{{ h.atencion.motivo_consulta|truncatechars:60|default:"—" }}</td>
+        <td class="small">{{ h.atencion.profesional.usuario.get_full_name|default:"—" }}</td>
+        <td class="small">{{ h.atencion.fecha_hora|date:"d/m/Y H:i" }}</td>
+        <td class="text-end">
+          <a href="{% url 'medicina:consulta' h.pk %}" class="btn btn-sm btn-primary">Abrir</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">
+  No hay consultas médicas abiertas. Una consulta se inicia desde el expediente
+  del paciente.
+</p>
+{% endif %}
+{% endblock %}

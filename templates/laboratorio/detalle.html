@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}Orden #{{ orden.id }} · Laboratorio{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Orden #{{ orden.id }}</h1>
+    <small class="text-muted">
+      {{ persona.nombre_completo }} · {{ persona.cedula }} ·
+      <span class="badge bg-info text-dark">{{ orden.get_estado_display }}</span>
+      {% if orden.prioridad == 'urgente' %}<span class="badge bg-danger">Urgente</span>{% endif %}
+    </small>
+  </div>
+  <a href="{% url 'laboratorio:bandeja' %}" class="btn btn-sm btn-outline-secondary">Bandeja</a>
+</div>
+
+{% if orden.diagnostico_presuntivo %}
+<p class="text-muted"><strong>Dx presuntivo:</strong> {{ orden.diagnostico_presuntivo }}</p>
+{% endif %}
+
+{% if orden.estado == Estado.CREADA %}
+<div class="card mb-3">
+  <div class="card-header">Fase preanalítica</div>
+  <div class="card-body">
+    <form method="post" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <input type="hidden" name="accion" value="tomar_muestra">
+      <div class="col-md-5">
+        <label class="form-label">Tipo de muestra</label>
+        <input name="tipo_muestra" class="form-control" placeholder="Sangre venosa, orina…">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100">Registrar toma</button>
+      </div>
+    </form>
+    <hr>
+    <form method="post" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <input type="hidden" name="accion" value="rechazar_muestra">
+      <div class="col-md-5">
+        <label class="form-label">Motivo de rechazo</label>
+        <input name="motivo" class="form-control" placeholder="Hemólisis, cantidad insuficiente…">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-outline-danger w-100">Rechazar muestra</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if orden.motivo_rechazo %}
+<div class="alert alert-danger"><strong>Muestra rechazada:</strong> {{ orden.motivo_rechazo }}</div>
+{% endif %}
+
+{% for bloque in examenes %}
+<div class="card mb-3">
+  <div class="card-header">{{ bloque.orden_examen.examen.nombre }}</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead class="table-light">
+        <tr><th>Parámetro</th><th>Valor</th><th>Referencia</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for p in bloque.parametros %}
+        <tr>
+          <td>{{ p.parametro.nombre }} <small class="text-muted">{{ p.parametro.unidad }}</small></td>
+          <td>
+            {% if p.resultado %}<strong>{{ p.resultado.valor }}</strong>{% else %}—{% endif %}
+          </td>
+          <td>
+            <small class="text-muted">
+              {% comment %}
+              `is not None` y no `{% if ref_min %}`: un rango que empieza en
+              CERO —bilirrubina directa 0 – 0,3— es falsy y desaparecía entero
+              de la pantalla, justo donde el profesional lo necesita para
+              interpretar el resultado.
+              {% endcomment %}
+              {% if p.parametro.ref_min is not None %}{{ p.parametro.ref_min|numero }} – {{ p.parametro.ref_max|numero }}{% else %}—{% endif %}
+            </small>
+          </td>
+          <td>
+            {% if p.resultado %}
+              {% if p.resultado.marcador == 'critico' %}
+                <span class="badge bg-danger">Crítico</span>
+              {% elif p.resultado.marcador == 'alto' %}
+                <span class="badge bg-warning text-dark">Alto</span>
+              {% elif p.resultado.marcador == 'bajo' %}
+                <span class="badge bg-warning text-dark">Bajo</span>
+              {% else %}
+                <span class="badge bg-success">Normal</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td>
+            {% if orden.estado == Estado.MUESTRA_TOMADA or orden.estado == Estado.EN_PROCESO %}
+            <form method="post" class="d-flex gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="resultado">
+              <input type="hidden" name="orden_examen" value="{{ bloque.orden_examen.id }}">
+              <input type="hidden" name="parametro" value="{{ p.parametro.id }}">
+              <input name="valor" class="form-control form-control-sm" style="width:100px"
+                     value="{{ p.resultado.valor|default:'' }}" required>
+              <button class="btn btn-sm btn-outline-primary">Guardar</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<div class="d-flex gap-2">
+  {% if orden.estado == Estado.EN_PROCESO %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="completar">
+    <button class="btn btn-primary">Marcar resultados completos</button>
+  </form>
+  {% endif %}
+
+  {% if orden.estado == Estado.RESULTADO %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="validar">
+    <button class="btn btn-success">Validar resultados</button>
+  </form>
+  <span class="text-muted small align-self-center">
+    Quien registró los resultados no puede validarlos.
+  </span>
+  {% endif %}
+
+  {% if orden.estado == Estado.VALIDADO %}
+  <form method="post" onsubmit="return confirm('¿Publicar y enviar al correo del paciente?')">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="publicar">
+    <button class="btn btn-success">Publicar y enviar al paciente</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if orden.estado == Estado.PUBLICADO %}
+<div class="alert alert-success mt-3">
+  Publicado el {{ orden.publicado_en|date:"d/m/Y H:i" }}.
+  {% if orden.enviado_correo_paciente %}
+    Informe enviado al correo institucional del paciente.
+  {% else %}
+    <strong>No se envió por correo</strong> (sin correo institucional registrado):
+    entregar en ventanilla.
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

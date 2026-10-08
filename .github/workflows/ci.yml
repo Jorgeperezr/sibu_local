@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sibu
+          POSTGRES_PASSWORD: sibu
+          POSTGRES_DB: sibu
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        ports: [ "6379:6379" ]
+
+    env:
+      DATABASE_URL: postgres://sibu:sibu@localhost:5432/sibu
+      REDIS_URL: redis://localhost:6379/0
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      SECRET_KEY: ci-secret-key
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias
+        run: pip install -r requirements/dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Seguridad (bandit)
+        run: bandit -r apps config -ll || true
+      - name: Auditoría de dependencias
+        run: pip-audit || true
+      - name: Migraciones
+        run: python manage.py migrate --noinput
+      - name: Pruebas
+        run: pytest --cov=apps --cov-report=term-missing

@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Django
+*.log
+db.sqlite3
+# Clave de firma generada sola para desarrollo (ver config/settings/dev.py).
+.secret_key_dev
+/media/
+/staticfiles/
+.env
+
+# Cobertura / pruebas
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+
+# Secretos / credenciales
+*.p12
+client_secret*.json
+credentials.json
+token.json
+
+# Entregables de sprint: se extraen sobre el repo, nunca se versionan.
+# Sin esto, un `git add -A` con el tarball presente lo commitea como blob
+# binario y el sprint parece aplicado sin estarlo.
+*.tar.gz
+*.zip
+
+# Artefactos locales de diagnóstico y parches
+diagnostico.txt
+parche_s10*.py
+parche_s10*.sh
+.env.prod
+docker/certs/
+
+# --- Portable ---
+# La carpeta de datos lleva la base con historias clínicas y la clave de esa
+# instalación. No entra en el repositorio bajo ningún concepto.
+datos/
+python/
+portable/servidor.txt

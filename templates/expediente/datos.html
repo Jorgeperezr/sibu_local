@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Datos de {{ persona.nombre_completo }} · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Datos de la persona</h1>
+    <small class="text-muted d-block">
+      {{ persona.nombre_completo }} · {{ persona.cedula }}
+    </small>
+  </div>
+  <a href="{% url 'expediente:detalle' expediente.pk %}" class="btn btn-sm btn-outline-secondary">
+    Volver al expediente
+  </a>
+</div>
+
+{% comment %}
+Dos columnas a propósito: a la izquierda lo que dice la matrícula, que no se
+toca desde aquí; a la derecha lo que este servicio comprobó. Verlos juntos es lo
+que permite revisar una corrección: un dato cambiado sin poder ver contra qué se
+cambió no se puede auditar.
+{% endcomment %}
+
+{% if mis_servicios|length > 1 %}
+<form method="get" class="d-flex align-items-center gap-2 mb-3">
+  <label class="form-label mb-0 small text-muted" for="servicio">Ajustando para</label>
+  <select name="servicio" id="servicio" class="form-select form-select-sm" style="max-width:280px"
+          onchange="this.form.submit()">
+    {% for s in mis_servicios %}
+    <option value="{{ s.codigo }}" {% if servicio.pk == s.pk %}selected{% endif %}>{{ s.nombre }}</option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}
+
+{% if servicio %}
+<div class="card mb-3">
+  <div class="card-header d-flex flex-wrap justify-content-between gap-2">
+    <span>Variables — vista de {{ servicio.nombre }}</span>
+    <small class="text-muted">El ajuste vale solo dentro de este servicio.</small>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Variable</th>
+          <th>Según matrícula</th>
+          <th>En este servicio</th>
+          <th>Ajustar</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in filas %}
+        <tr>
+          <td class="text-nowrap">{{ f.etiqueta }}</td>
+          <td class="text-muted">{{ f.institucional|default:"—" }}</td>
+          <td>
+            {% if f.ajustado %}
+              <strong>{{ f.valor }}</strong>
+              <span class="badge bg-warning text-dark">ajustado aquí</span>
+              {% if f.nota %}<div class="small text-muted">{{ f.nota }}</div>{% endif %}
+            {% else %}
+              {{ f.valor|default:"—" }}
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" class="d-flex flex-wrap gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="servicio" value="{{ servicio.codigo }}">
+              <input type="hidden" name="variable" value="{{ f.variable }}">
+              <input name="valor" class="form-control form-control-sm" style="max-width:130px"
+                     value="{{ f.valor }}" required>
+              <input name="nota" class="form-control form-control-sm" style="max-width:190px"
+                     placeholder="Por qué" value="{{ f.nota }}">
+              <button class="btn btn-sm btn-outline-primary">Guardar</button>
+            </form>
+          </td>
+          <td class="text-end">
+            {% if f.ajustado %}
+            <form method="post"
+                  onsubmit="return confirm('¿Volver al dato de matrícula para {{ f.etiqueta }}?');">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="quitar">
+              <input type="hidden" name="servicio" value="{{ servicio.codigo }}">
+              <input type="hidden" name="variable" value="{{ f.variable }}">
+              <button class="btn btn-sm btn-outline-secondary text-nowrap">Deshacer</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-secondary">
+  Su usuario no tiene ningún servicio asignado, así que no hay desde dónde
+  ajustar. Los datos de abajo se muestran tal como los declaró la matrícula.
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Identidad — solo se declara, no se ajusta</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><th class="fw-normal text-muted ps-3">Género</th>
+                <td>{{ persona.genero|default:"—" }}</td></tr>
+            <tr><th class="fw-normal text-muted ps-3">Identidad u orientación sexual</th>
+                <td>{{ persona.identidad_orientacion_sexual|default:"—" }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body py-2">
+        <p class="small text-muted mb-0">
+          {% comment %}
+          Esto no es una limitación técnica sino una regla: que un servicio
+          «corrija» el género o la identidad de alguien sería asignársela.
+          {% endcomment %}
+          Son declaraciones de la persona sobre sí misma. No se corrigen desde
+          un servicio: se cambian donde se declaran —su ficha o el portal—.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Matrícula</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><th class="fw-normal text-muted ps-3">Facultad</th>
+                <td>{{ institucional.facultad|default:"—" }}</td></tr>
+            <tr><th class="fw-normal text-muted ps-3">Carrera</th>
+                <td>{{ institucional.carrera|default:"—" }}</td></tr>
+            <tr><th class="fw-normal text-muted ps-3">Ciclo</th>
+                <td>{{ institucional.ciclo|default:"—" }}</td></tr>
+            <tr><th class="fw-normal text-muted ps-3">Estado</th>
+                <td>{{ institucional.estado|default:"—" }}</td></tr>
+            <tr><th class="fw-normal text-muted ps-3">Correo institucional</th>
+                <td>{{ persona.correo_institucional|default:"—" }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

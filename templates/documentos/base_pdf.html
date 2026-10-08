@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{% block titulo_doc %}Documento{% endblock %} — SIBU</title>
+  <style>
+    {% comment %}
+    Línea gráfica del Manual Corporativo de la UNL: Montserrat, rojo Pantone
+    485 C (#BF0811) y verde 355 C (#4F8E3A) sobre negro Pantone Black C
+    (#211915). Nada de esquinas redondeadas: es un documento oficial, no una
+    tarjeta de la interfaz.
+    {% endcomment %}
+    {% for peso, url in fuentes.items %}
+    @font-face {
+      font-family: "Montserrat";
+      font-weight: {{ peso }};
+      font-style: normal;
+      src: url("{{ url }}") format("woff2");
+    }
+    {% endfor %}
+
+    @page {
+      size: A4;
+      margin: 2.2cm 1.9cm 2.4cm;
+      @bottom-left {
+        content: "{{ institucion }} · {{ unidad }}";
+        font-family: "Montserrat", sans-serif;
+        font-size: 7pt;
+        color: #6b6560;
+      }
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-family: "Montserrat", sans-serif;
+        font-size: 7pt;
+        color: #6b6560;
+      }
+    }
+
+    body {
+      font-family: "Montserrat", sans-serif;
+      font-size: 9pt;
+      color: #211915;
+      line-height: 1.45;
+    }
+
+    /* ---- Membrete ----
+       Logotipo a la izquierda y el nombre de la unidad a la derecha, separados
+       por un filete vertical. Es la composición que el manual reserva para las
+       dependencias sin identificador gráfico propio ("Interacciones con
+       nombres departamentales"): el nombre se escribe con la misma jerarquía
+       tipográfica del logotipo, no como una línea suelta de texto.
+       Se maqueta con tabla y no con flex porque WeasyPrint la compone de forma
+       predecible en todos los tamaños de página. */
+    .membrete {
+      width: 100%;
+      border-bottom: 2pt solid #bf0811;
+      padding-bottom: 7pt;
+      margin-bottom: 14pt;
+    }
+    .membrete td {
+      border: 0;
+      padding: 0;
+      vertical-align: middle;
+    }
+    .membrete img { height: 44pt; }
+    .membrete .unidad {
+      border-left: .75pt solid #211915;
+      padding-left: 8pt;
+      font-size: 9pt;
+      line-height: 1.22;
+      color: #211915;
+      /* El bloque se pega al margen derecho, como en el manual. */
+      float: right;
+    }
+    .membrete .unidad .l1 { font-weight: 400; }
+    .membrete .unidad .l2 { font-weight: 400; }
+    .membrete .unidad .l3 { font-weight: 700; }
+
+    h1 {
+      font-size: 13pt;
+      font-weight: 700;
+      margin: 0 0 1pt;
+    }
+    .subtitulo {
+      font-size: 8.5pt;
+      color: #6b6560;
+      margin-bottom: 12pt;
+    }
+    h2 {
+      font-size: 9.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #4f8e3a;
+      border-bottom: .75pt solid #e3e1dd;
+      padding-bottom: 2pt;
+      margin: 16pt 0 7pt;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 4pt 6pt;
+      border-bottom: .5pt solid #e3e1dd;
+      vertical-align: top;
+    }
+    thead th {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b6560;
+      background: #f5f6f4;
+      border-bottom: .75pt solid #211915;
+    }
+    td.num, th.num { text-align: right; }
+    tbody tr:last-child td { border-bottom: .75pt solid #211915; }
+
+    /* Ficha de datos: etiqueta a la izquierda, valor a la derecha. */
+    table.ficha th {
+      width: 32%;
+      font-weight: 600;
+      color: #6b6560;
+      background: transparent;
+    }
+
+    .nota {
+      font-size: 7.5pt;
+      color: #6b6560;
+      margin-top: 4pt;
+    }
+    .pie-doc {
+      margin-top: 20pt;
+      border-top: .5pt solid #e3e1dd;
+      padding-top: 6pt;
+      font-size: 7.5pt;
+      color: #6b6560;
+    }
+    {% block estilos_extra %}{% endblock %}
+  </style>
+</head>
+<body>
+
+  <table class="membrete">
+    <tr>
+      <td>{% if logo_unl %}<img src="{{ logo_unl }}" alt="{{ institucion }}">{% endif %}</td>
+      <td>
+        <div class="unidad">
+          <div class="l1">Unidad de</div>
+          <div class="l2">Bienestar</div>
+          <div class="l3">Universitario</div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <h1>{% block titulo %}{% endblock %}</h1>
+  <div class="subtitulo">{% block subtitulo %}{% endblock %}</div>
+
+  {% block contenido %}{% endblock %}
+
+  <div class="pie-doc">
+    Documento generado por SIBU el {{ generado_en|date:"d/m/Y" }} a las
+    {{ generado_en|date:"H:i" }}.
+    {% block pie_extra %}{% endblock %}
+  </div>
+
+</body>
+</html>

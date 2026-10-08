@@ -1,0 +1,87 @@
+{% extends "documentos/base_pdf.html" %}
+
+{% block titulo_doc %}Reporte de gestión{% endblock %}
+{% block titulo %}Reporte de gestión{% endblock %}
+{% block subtitulo %}
+  {% if desde or hasta %}
+    Periodo: {{ desde|date:"d/m/Y"|default:"inicio" }} — {{ hasta|date:"d/m/Y"|default:"a la fecha" }}
+  {% else %}
+    Acumulado histórico
+  {% endif %}
+{% endblock %}
+
+{% block contenido %}
+
+{% comment %}
+Solo agregados: el tablero informa de gestión, no de contenido clínico. En los
+servicios confidenciales los conteos bajo el umbral llegan ya suprimidos como
+"<5" desde `services`, y aquí se imprimen tal cual.
+{% endcomment %}
+
+<h2>Demanda por servicio</h2>
+{% if datos.atenciones %}
+<table>
+  <thead>
+    <tr><th>Servicio</th><th class="num">Atenciones</th><th class="num">Pacientes distintos</th></tr>
+  </thead>
+  <tbody>
+    {% for f in datos.atenciones %}
+    <tr>
+      <td>{{ f.servicio }}</td>
+      <td class="num">{{ f.total }}</td>
+      <td class="num">{{ f.pacientes }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="nota">
+  En los servicios de confidencialidad reforzada, los conteos menores a
+  {{ k_minimo }} se publican como «&lt;5»: una cifra pequeña identifica a la
+  persona tan bien como su nombre.
+</div>
+{% else %}
+<p class="nota">Sin atenciones registradas en el periodo.</p>
+{% endif %}
+
+<h2>Agenda</h2>
+<table class="ficha">
+  <tr><th>Citas agendadas</th><td>{{ datos.citas.total|default:"0" }}</td></tr>
+  <tr><th>Atendidas</th><td>{{ datos.citas.atendidas|default:"0" }}</td></tr>
+  <tr><th>No asistieron</th><td>{{ datos.citas.no_asistio|default:"0" }}</td></tr>
+  <tr><th>Ausentismo</th><td>{{ datos.citas.ausentismo|default:"0" }} %</td></tr>
+</table>
+
+<h2>Derivaciones</h2>
+{% if datos.derivaciones.por_destino %}
+<table>
+  <thead>
+    <tr><th>Servicio destino</th><th class="num">Recibidas</th><th class="num">Atendidas</th></tr>
+  </thead>
+  <tbody>
+    {% for d in datos.derivaciones.por_destino %}
+    <tr>
+      <td>{{ d.destino }}</td>
+      <td class="num">{{ d.total }}</td>
+      <td class="num">{{ d.atendidas }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="nota">Sin derivaciones registradas.</p>
+{% endif %}
+
+<h2>Indicadores de servicio</h2>
+<table class="ficha">
+  <tr><th>CPO-D promedio (Odontología)</th><td>{{ datos.odontologia.cpod_promedio|default:"—" }}</td></tr>
+  <tr><th>Órdenes de laboratorio</th><td>{{ datos.laboratorio.total|default:"0" }}</td></tr>
+  <tr><th>Becas vigentes</th><td>{{ datos.becas|length }}</td></tr>
+  <tr><th>Cobertura de talleres</th><td>{{ datos.talleres.participantes|default:"0" }} participantes</td></tr>
+</table>
+
+{% endblock %}
+
+{% block pie_extra %}
+  Contiene únicamente información agregada de gestión; no incluye datos
+  clínicos ni identidades de pacientes.
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Beca — SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">{{ b.expediente.persona.nombre_completo }}</h1>
+<p class="text-muted">
+  {{ b.tipo_beca.nombre }} · desde {{ b.periodo_desde.codigo }}
+  {% if b.periodo_hasta %} hasta {{ b.periodo_hasta.codigo }}{% endif %}
+  · <span class="badge bg-light text-dark border">{{ b.get_estado_display }}</span>
+</p>
+
+{% if b.causal %}
+<div class="alert alert-secondary py-2 small"><strong>Causal:</strong> {{ b.causal }}</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header">Verificar matrícula</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="verificar">
+          <button class="btn btn-sm btn-outline-primary">Consultar dato institucional</button>
+          <div class="form-text">
+            Informa el estado de matrícula. <strong>No suspende la beca</strong>:
+            esa decisión es de Trabajo Social, no del resultado de una consulta.
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Cambiar estado</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="estado">
+          <select name="estado" class="form-select form-select-sm mb-2">
+            {% for v, etiqueta in estados %}
+            {% if v != "registrado" %}
+            <option value="{{ v }}" {% if b.estado == v %}selected{% endif %}>{{ etiqueta }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          <textarea name="causal" class="form-control form-control-sm mb-2" rows="2"
+                    placeholder="Causal (obligatoria para suspender o terminar)">{{ b.causal }}</textarea>
+          <button class="btn btn-sm btn-outline-danger"
+                  {% if b.estado == "terminado" %}disabled{% endif %}>Actualizar</button>
+          <div class="form-text">Sin causal escrita, un reclamo posterior es indefendible.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header">Registrar seguimiento</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="seguimiento">
+          <select name="tipo" class="form-select form-select-sm mb-2">
+            {% for v, etiqueta in tipos_seguimiento %}
+            <option value="{{ v }}">{{ etiqueta }}</option>
+            {% endfor %}
+          </select>
+          <textarea name="detalle" class="form-control form-control-sm mb-2" rows="3" required></textarea>
+          <button class="btn btn-sm btn-primary">Registrar</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Historial ({{ seguimientos.count }})</div>
+      <div class="card-body p-0">
+        {% if seguimientos %}
+        <div class="list-group list-group-flush">
+          {% for s in seguimientos %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <strong class="small">{{ s.get_tipo_display }}</strong>
+              <span class="small text-muted">{{ s.periodo.codigo }} · {{ s.fecha|date:"d/m/Y" }}</span>
+            </div>
+            <div class="small">{{ s.detalle }}</div>
+            {% if s.matricula_vigente is not None %}
+            <span class="badge {% if s.matricula_vigente %}bg-success{% else %}bg-warning text-dark{% endif %} mt-1">
+              {% if s.matricula_vigente %}Matrícula vigente{% else %}Sin matrícula vigente{% endif %}
+            </span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<p class="text-muted small p-3 mb-0">Sin seguimientos.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

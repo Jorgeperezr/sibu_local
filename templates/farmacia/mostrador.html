@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Farmacia · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Mostrador de farmacia</h1>
+  <a href="{% url 'farmacia:inventario' %}" class="btn btn-sm btn-outline-secondary">Inventario</a>
+  {% include "_exportar_servicio.html" with codigo="farmacia" %}
+</div>
+
+{% if alertas_stock %}
+<div class="alert alert-warning">
+  <strong>Stock bajo mínimo:</strong>
+  {% for a in alertas_stock %}
+    <span class="badge {% if a.critico %}bg-danger{% else %}bg-warning text-dark{% endif %} me-1">
+      {{ a.medicamento }}: {{ a.disponible }}/{{ a.minimo }}
+    </span>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">Recetas por despachar</div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Receta</th><th>Paciente</th><th>Ítems</th><th>Vence</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for r in recetas %}
+        <tr>
+          <td><strong>{{ r.numero }}</strong></td>
+          <td>
+            {{ r.atencion.expediente.persona.nombre_completo }}
+            <br><small class="text-muted">{{ r.atencion.expediente.persona.cedula }}</small>
+          </td>
+          <td>{{ r.detalles.count }}</td>
+          <td><small>{{ r.valida_hasta|date:"d/m/Y H:i" }}</small></td>
+          <td>
+            {% if r.estado == 'despachada_parcial' %}
+              <span class="badge bg-warning text-dark">Parcial</span>
+            {% else %}
+              <span class="badge bg-info text-dark">{{ r.get_estado_display }}</span>
+            {% endif %}
+          </td>
+          <td><a href="{% url 'farmacia:despachar' r.id %}" class="btn btn-sm btn-primary">Despachar</a></td>
+        </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Sin recetas pendientes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

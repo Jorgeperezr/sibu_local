@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Derivar — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Derivar paciente</h1>
+    <small class="text-muted">
+      {{ atencion.expediente.persona.nombre_completo }} · desde {{ atencion.servicio.nombre }}
+    </small>
+  </div>
+  <a href="{% url 'expediente:detalle' atencion.expediente_id %}"
+     class="btn btn-sm btn-outline-secondary">Volver al expediente</a>
+</div>
+
+<div class="card" style="max-width:640px">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Servicio destino</label>
+        <select name="servicio_destino" class="form-select" required>
+          <option value="">—</option>
+          {% for s in servicios %}<option value="{{ s.pk }}">{{ s.nombre }}</option>{% endfor %}
+        </select>
+        {% if abiertas %}
+        <div class="form-text">
+          No figuran, porque el paciente ya tiene una derivación en curso a
+          {{ abiertas|join:", " }}.
+        </div>
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Motivo</label>
+        <input name="motivo" class="form-control" required maxlength="255">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Resumen para el servicio destino</label>
+        <textarea name="resumen" class="form-control" rows="4"></textarea>
+        <div class="form-text">
+          Este texto sí viaja al destino: es información que usted comparte.
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Prioridad</label>
+        <select name="prioridad" class="form-select">
+          <option value="normal">Normal</option>
+          <option value="urgente">Urgente</option>
+        </select>
+      </div>
+      <button class="btn btn-primary">Enviar derivación</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

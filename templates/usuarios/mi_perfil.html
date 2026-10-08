@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Mis datos · SIBU{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 sibu-titulo mb-0">Mis datos</h1>
+  <small class="text-muted">
+    Lo que le identifica al atender y al firmar un documento.
+  </small>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">Ficha profesional</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="first_name">Nombres</label>
+              <input id="first_name" name="first_name" class="form-control"
+                     value="{{ user.first_name }}" maxlength="150">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="last_name">Apellidos</label>
+              <input id="last_name" name="last_name" class="form-control"
+                     value="{{ user.last_name }}" maxlength="150">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="cedula">Cédula</label>
+              <input id="cedula" name="cedula" class="form-control"
+                     value="{{ user.cedula|default:'' }}" maxlength="13" inputmode="numeric">
+              <div class="form-text">
+                Identifica al firmante. Se valida con el módulo 10.
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="telefono">Teléfono</label>
+              <input id="telefono" name="telefono" class="form-control"
+                     value="{{ user.telefono }}" maxlength="20">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="email">Correo institucional</label>
+              <input id="email" name="email" type="email" class="form-control"
+                     value="{{ user.email }}" maxlength="254">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="fecha_nacimiento">Fecha de nacimiento</label>
+              <input id="fecha_nacimiento" name="fecha_nacimiento" type="date" class="form-control"
+                     value="{{ user.fecha_nacimiento|date:'Y-m-d' }}">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="titulo">Título</label>
+              <input id="titulo" name="titulo" class="form-control"
+                     value="{{ perfil.titulo|default:'' }}" maxlength="120"
+                     placeholder="Médico General">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="registro_profesional">Registro profesional</label>
+              <input id="registro_profesional" name="registro_profesional" class="form-control"
+                     value="{{ perfil.registro_profesional|default:'' }}" maxlength="60"
+                     placeholder="ACESS / SENESCYT">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="denominacion_cargo">Denominación del cargo</label>
+              <input id="denominacion_cargo" name="denominacion_cargo" class="form-control"
+                     value="{{ perfil.denominacion_cargo|default:'' }}" maxlength="150"
+                     placeholder="Según el manual de puestos">
+            </div>
+          </div>
+          <input type="hidden" name="accion" value="actualizar">
+          <button class="btn btn-primary mt-3">Guardar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">Acceso asignado</div>
+      <div class="card-body">
+        {% comment %}
+        Solo lectura, y a propósito: de estos campos depende el RBAC. Se
+        muestran para que el profesional sepa con qué permisos trabaja, no
+        para que se los cambie.
+        {% endcomment %}
+        <dl class="row mb-0 small">
+          <dt class="col-5">Rol</dt>
+          <dd class="col-7">{{ user.get_rol_principal_display }}</dd>
+          <dt class="col-5">Sección</dt>
+          <dd class="col-7">{{ perfil.seccion.nombre|default:"—" }}</dd>
+          <dt class="col-5">Servicios</dt>
+          <dd class="col-7">
+            {% for s in servicios %}
+              <span class="badge bg-light text-dark border">{{ s.nombre }}</span>
+            {% empty %}—{% endfor %}
+          </dd>
+          <dt class="col-5">Usuario</dt>
+          <dd class="col-7">{{ user.username }}</dd>
+        </dl>
+        <p class="small text-muted mt-3 mb-0">
+          El rol, la sección y los servicios los asigna la administración de la
+          Unidad. Si alguno no corresponde, solicítelo por ahí.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if perfil %}
+<div class="card mt-3">
+  <div class="card-header">Actividades esenciales del manual de puestos</div>
+  <div class="card-body">
+    <p class="small text-muted">
+      Las que corresponden al cargo según el manual de puestos —normalmente
+      entre diez y trece—. La última suele ser "las demás actividades que
+      asigne el jefe inmediato"; ahí se agregan las sub-actividades concretas
+      que se van delegando, sin renumerar el resto de la lista.
+    </p>
+
+    {% if actividades %}
+    <ol class="mb-3">
+      {% for a in actividades %}
+      <li class="mb-2">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <span>{{ a.descripcion }}</span>
+          <form method="post" class="d-inline"
+                onsubmit="return confirm('¿Eliminar esta actividad{% if a.subactividades.all %} y sus sub-actividades{% endif %}?');">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="eliminar_actividad">
+            <input type="hidden" name="actividad" value="{{ a.pk }}">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Eliminar">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </form>
+        </div>
+        {% if a.subactividades.all %}
+        <ol type="a" class="mt-1">
+          {% for sub in a.subactividades.all %}
+          <li class="small">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <span>{{ sub.descripcion }}</span>
+              <form method="post" class="d-inline"
+                    onsubmit="return confirm('¿Eliminar esta sub-actividad?');">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="eliminar_actividad">
+                <input type="hidden" name="actividad" value="{{ sub.pk }}">
+                <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Eliminar">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+        {% endif %}
+        {% comment %}
+        Agregar una sub-actividad bajo ESTA fila: sirve para cualquiera, no
+        solo para la última, porque el manual real a veces delega bajo más
+        de una actividad y no es este sistema quien debe forzar cuál.
+        {% endcomment %}
+        <form method="post" class="d-flex gap-2 mt-1 ms-4">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="agregar_subactividad">
+          <input type="hidden" name="actividad_superior" value="{{ a.pk }}">
+          <input name="descripcion" class="form-control form-control-sm" maxlength="500"
+                 placeholder="Añadir sub-actividad bajo esta fila">
+          <button class="btn btn-sm btn-outline-secondary text-nowrap">+ Sub-actividad</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="text-muted small">Sin actividades registradas todavía.</p>
+    {% endif %}
+
+    <form method="post" class="row g-2 border-top pt-3">
+      {% csrf_token %}
+      <input type="hidden" name="accion" value="agregar_actividad">
+      <div class="col-sm-9">
+        <input name="descripcion" class="form-control form-control-sm" maxlength="500" required
+               placeholder="Nueva actividad esencial">
+      </div>
+      <div class="col-sm-3">
+        <button class="btn btn-sm btn-outline-primary w-100">Agregar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

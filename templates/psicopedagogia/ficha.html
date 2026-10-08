@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Ficha psicopedagógica — SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">{{ ficha.atencion.expediente.persona.nombre_completo }}</h1>
+<p class="text-muted small">{{ ficha.motivo }}</p>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Impacto de la intervención</div>
+      <div class="card-body">
+        {% if impacto.comparables %}
+        <p class="mb-1">
+          Variación del promedio:
+          <strong class="{% if impacto.mejoro %}text-success{% else %}text-danger{% endif %}">
+            {% if impacto.mejoro %}+{% endif %}{{ impacto.variacion_promedio }}
+          </strong>
+          <span class="text-muted small">sobre {{ impacto.comparables }} periodo(s) comparable(s)</span>
+        </p>
+        {% if impacto.incompletos %}
+        <p class="small text-muted mb-0">
+          {{ impacto.incompletos }} seguimiento(s) sin ambos promedios: no se cuentan
+          para no falsear el indicador.
+        </p>
+        {% endif %}
+        {% else %}
+        <p class="text-muted small mb-0">
+          Sin periodos comparables todavía. Se necesita el promedio antes y después.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Plan de intervención</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="plan">
+          <textarea name="plan_intervencion" class="form-control form-control-sm" rows="5">{{ ficha.plan_intervencion }}</textarea>
+          <button class="btn btn-sm btn-primary mt-2">Guardar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Registrar seguimiento</div>
+      <div class="card-body">
+        <form method="post" class="row g-2">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="seguimiento">
+          <div class="col-12">
+            <label class="form-label small">Periodo</label>
+            <select name="periodo" class="form-select form-select-sm" required>
+              {% for p in periodos %}<option value="{{ p.codigo }}">{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Promedio antes</label>
+            <input type="number" step="0.01" min="0" max="10" name="promedio_antes" class="form-control form-control-sm">
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Promedio después</label>
+            <input type="number" step="0.01" min="0" max="10" name="promedio_despues" class="form-control form-control-sm">
+          </div>
+          <div class="col-12">
+            <input name="observaciones" class="form-control form-control-sm" placeholder="Observaciones">
+          </div>
+          <div class="col-12"><button class="btn btn-sm btn-primary">Registrar</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Seguimientos</div>
+      <div class="card-body p-0">
+        {% if seguimientos %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Periodo</th><th>Antes</th><th>Después</th><th>Δ</th></tr></thead>
+            <tbody>
+              {% for s in seguimientos %}
+              <tr>
+                <td>{{ s.periodo }}</td>
+                <td>{{ s.promedio_antes|default:"—" }}</td>
+                <td>{{ s.promedio_despues|default:"—" }}</td>
+                <td>
+                  {% if s.promedio_antes and s.promedio_despues %}
+                    {% widthratio s.promedio_despues 1 1 as d %}
+                    <span class="badge bg-light text-dark">{{ s.promedio_despues|floatformat:2 }} vs {{ s.promedio_antes|floatformat:2 }}</span>
+                  {% else %}<span class="text-muted small">incompleto</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}<p class="text-muted small p-3 mb-0">Sin seguimientos.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

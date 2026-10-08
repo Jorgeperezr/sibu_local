@@ -1,0 +1,26 @@
+{{ unidad }}
+Laboratorio Clínico
+
+Estimado/a {{ persona.nombre_completo }}:
+
+Sus resultados de laboratorio correspondientes a la orden #{{ orden.pk }}
+ya se encuentran disponibles.
+
+Fecha de toma de muestra: {{ orden.fecha_toma_muestra|date:"d/m/Y H:i"|default:"—" }}
+Fecha de validación: {{ orden.validado_en|date:"d/m/Y H:i"|default:"—" }}
+
+RESULTADOS
+------------------------------------------------------------------
+{% for r in resultados %}{{ r.orden_examen.examen.nombre }} · {{ r.parametro.nombre }}
+  Valor: {{ r.valor }} {{ r.unidad }}{% if r.ref_min != "" or r.ref_max != "" %} (referencia: {{ r.ref_min }} - {{ r.ref_max }}){% endif %}
+  Estado: {{ r.get_marcador_display }}{% if r.observacion %}
+  Observación: {{ r.observacion }}{% endif %}
+{% empty %}Sin resultados registrados.
+{% endfor %}------------------------------------------------------------------
+
+IMPORTANTE: este informe no constituye un diagnóstico. Los resultados deben
+ser interpretados por el profesional que solicitó los exámenes. Acérquese a
+su cita de control para la valoración correspondiente.
+
+Este es un mensaje automático; por favor no responda a este correo.
+{{ unidad }}

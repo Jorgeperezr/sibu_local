@@ -1,0 +1,151 @@
+{% load static %}
+{% load estaticos %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SIBU — Bienestar Universitario UNL{% endblock %}</title>
+  {% comment %}
+  Bootstrap se sirve desde el propio servidor, no desde un CDN. Es un sistema
+  interno de la Unidad: si la red de la UNL bloquea el CDN o este cae, la
+  interfaz aparecía sin estilos y con el menú móvil desplegado sobre la
+  página. WhiteNoise ya sirve los estáticos en producción.
+  {% endcomment %}
+  <link href="{% estatico 'vendor/montserrat/montserrat.css' %}" rel="stylesheet">
+  <link href="{% estatico 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% estatico 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
+  <link href="{% estatico 'css/sibu.css' %}" rel="stylesheet">
+  <link rel="icon" href="{% static 'img/unl-escudo.png' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% comment %}
+Un solo armazón para toda la aplicación: barra lateral con la navegación y el
+contenido a su derecha.
+
+La lateral agrupa los módulos por sección —Salud, Psicopedagógica, Becas…— y
+crece hacia abajo. Trece enlaces en una barra horizontal quedaban apretados e
+ilegibles, y cada módulo nuevo estrechaba a los demás.
+
+Sin sesión no hay nada que navegar, así que las piezas de navegación se omiten
+y el contenido ocupa la página. La estructura es la misma en ambos casos porque
+`{% templatetag openblock %} block content {% templatetag closeblock %}` solo
+puede declararse una vez.
+{% endcomment %}
+
+<div class="sibu-shell{% if not user.is_authenticated %} sibu-shell-publico{% endif %}">
+
+  {% if user.is_authenticated %}
+  <aside class="sibu-side d-none d-lg-flex flex-column">
+    {% comment %}
+    El logotipo oficial se usa tal cual, en sus colores corporativos: el manual
+    prohíbe recomponerlo, cambiarle la escala relativa o teñirlo. Por eso la
+    lateral es blanca en vez del verde oscuro que tenía antes.
+    {% endcomment %}
+    <a class="sibu-marca" href="{% url 'inicio' %}">
+      <img src="{% static 'img/unl-horizontal.png' %}"
+           alt="Universidad Nacional de Loja">
+    </a>
+    <nav class="sibu-nav flex-grow-1">{% include "_nav_lista.html" %}</nav>
+    <div class="sibu-usuario">
+      <div class="sibu-avatar">{{ user.get_full_name|default:user.username|slice:":1"|upper }}</div>
+      <a class="sibu-usuario-datos" href="{% url 'usuarios:mi_perfil' %}"
+         title="Mis datos">
+        <span>{{ user.get_full_name|default:user.username }}</span>
+        <small>{{ user.get_rol_principal_display }}</small>
+      </a>
+      {% comment %}
+      El aviso va siempre a la vista y no solo dentro de un menú: una bandeja a
+      la que hay que acordarse de entrar no sirve para avisar de un valor
+      crítico de laboratorio.
+      {% endcomment %}
+      <div class="sibu-usuario-acciones">
+        <a href="{% url 'notificaciones:bandeja' %}" class="sibu-avisos"
+           title="{{ notificaciones_sin_leer }} notificación(es) sin leer">
+          <i class="bi bi-bell{% if notificaciones_sin_leer %}-fill{% endif %}"></i>
+          {% if notificaciones_sin_leer %}
+          <span class="badge rounded-pill bg-danger">{{ notificaciones_sin_leer }}</span>
+          {% endif %}
+        </a>
+        {% comment %}
+        Cerrar sesión va por POST, no por enlace. Django 5 retiró el GET de
+        `LogoutView` y devuelve 405: era un enlace y eso es lo que veía quien
+        pulsaba el icono. El motivo por el que Django lo retiró importa aquí:
+        con un GET, un tercero cierra la sesión ajena con un
+        `<img src="/cuentas/logout/">` metido en cualquier página.
+        {% endcomment %}
+        <form method="post" action="{% url 'logout' %}" class="sibu-salir-form">
+          {% csrf_token %}
+          <button type="submit" title="Cerrar sesión" class="sibu-salir">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </aside>
+  {% endif %}
+
+  <div class="sibu-main">
+    {% if user.is_authenticated %}
+    <header class="sibu-top d-lg-none">
+      <button class="btn btn-sm btn-light" type="button" data-bs-toggle="offcanvas"
+              data-bs-target="#nav-movil" aria-label="Abrir menú">
+        <i class="bi bi-list"></i>
+      </button>
+      <a href="{% url 'inicio' %}">
+        <img src="{% static 'img/unl-horizontal.png' %}"
+             alt="Universidad Nacional de Loja">
+      </a>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-light" title="Cerrar sesión">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </form>
+    </header>
+    {% endif %}
+
+    <main class="sibu-contenido">
+      {% block breadcrumb %}{% endblock %}
+
+      {% comment %}
+        Único lugar donde se pintan los mensajes. Mientras las plantillas
+        conservaron su propio bloque, cada aviso salía DOS veces en pantalla.
+        Una plantilla nueva no debe volver a incluirlo.
+      {% endcomment %}
+      {% if messages %}
+      <div class="mb-3">
+        {% for m in messages %}
+        <div class="alert alert-{{ m.tags|default:'info' }} alert-dismissible fade show py-2" role="alert">
+          {{ m }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="sibu-footer">
+      <span>Unidad de Bienestar Universitario · Universidad Nacional de Loja</span>
+    </footer>
+  </div>
+</div>
+
+{% if user.is_authenticated %}
+<div class="offcanvas offcanvas-start sibu-side-movil" tabindex="-1" id="nav-movil">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">Unidad de Bienestar Universitario</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body sibu-nav">{% include "_nav_lista.html" %}</div>
+</div>
+{% endif %}
+
+<script src="{% estatico 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

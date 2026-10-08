@@ -1,0 +1,47 @@
+{% extends "documentos/base_pdf.html" %}
+
+{% block titulo_doc %}Informe de atención{% endblock %}
+{% block titulo %}Informe de atención{% endblock %}
+{% block subtitulo %}{{ atencion.servicio.nombre }}{% endblock %}
+
+{% block contenido %}
+
+<h2>Datos del paciente</h2>
+<table class="ficha">
+  <tr><th>Paciente</th><td>{{ persona.nombre_completo }}</td></tr>
+  <tr><th>Cédula</th><td>{{ persona.cedula }}</td></tr>
+  <tr><th>Expediente</th><td>{{ atencion.expediente.numero_expediente }}</td></tr>
+</table>
+
+<h2>Atención</h2>
+<table class="ficha">
+  <tr><th>Servicio</th><td>{{ atencion.servicio.nombre }}</td></tr>
+  <tr><th>Fecha</th><td>{{ atencion.fecha_hora|date:"d/m/Y H:i" }}</td></tr>
+  <tr><th>Profesional</th><td>{{ atencion.profesional.usuario.get_full_name|default:"—" }}</td></tr>
+  <tr><th>Tipo</th><td>{{ atencion.get_tipo_display }}</td></tr>
+  <tr><th>Motivo</th><td>{{ atencion.motivo_consulta|default:"—" }}</td></tr>
+</table>
+
+<h2>Firma de responsabilidad</h2>
+<p>
+  El profesional que suscribe certifica que la información consignada en este
+  documento corresponde a la atención prestada.
+</p>
+
+{% comment %}
+Espacio en blanco deliberado: aquí estampa su firma el profesional cuando el
+documento se firma fuera de SIBU, que es el flujo vigente.
+{% endcomment %}
+<div style="margin-top:46pt;border-top:.5pt solid #211915;width:58%">
+  <div style="font-size:8pt;padding-top:3pt">
+    {{ atencion.profesional.usuario.get_full_name|default:"" }}<br>
+    <span style="color:#6b6560">{{ atencion.servicio.nombre }} · {{ unidad }}</span>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block pie_extra %}
+  La firma electrónica, cuando se aplica, se realiza en el computador del
+  profesional; SIBU no interviene en el proceso criptográfico.
+{% endblock %}

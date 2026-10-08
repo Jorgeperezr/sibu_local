@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Tablero — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-2"><h1 class="h4 sibu-titulo mb-0">Tablero de gestión</h1>
+  <form method="get" class="d-flex gap-2">
+    <input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}" class="form-control form-control-sm">
+    <input type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}" class="form-control form-control-sm">
+    <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+    <a href="{% url 'reportes:exportar' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}"
+       class="btn btn-sm btn-outline-secondary">CSV</a>
+  <a href="{% url 'reportes:exportar_pdf' %}{% if desde or hasta %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}{% endif %}"
+     class="btn btn-sm btn-primary">
+    <i class="bi bi-file-earmark-pdf"></i> Reporte en PDF
+  </a>
+  </form>
+</div>
+<p class="small text-muted">
+  Solo agregados de gestión: ningún dato identifica pacientes. En servicios
+  confidenciales, los conteos menores a 5 se muestran como «&lt;5».
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Atenciones por servicio</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Servicio</th><th>Atenciones</th><th>Pacientes distintos</th></tr></thead>
+            <tbody>
+              {% for f in datos.atenciones %}
+              <tr><td>{{ f.servicio }}</td><td>{{ f.total }}</td><td>{{ f.pacientes }}</td></tr>
+              {% empty %}<tr><td colspan="3" class="text-muted small">Sin datos.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Citas</div>
+      <div class="card-body">
+        <p class="mb-1">Total: <strong>{{ datos.citas.total }}</strong>
+          {% if datos.citas.ausentismo_pct is not None %}
+          · Ausentismo: <strong>{{ datos.citas.ausentismo_pct }}%</strong>
+          {% endif %}
+        </p>
+        <div class="small text-muted">
+          {% for estado, n in datos.citas.por_estado.items %}{{ estado }}: {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Derivaciones por destino</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Destino</th><th>Total</th><th>Atendidas</th></tr></thead>
+            <tbody>
+              {% for f in datos.derivaciones.por_destino %}
+              <tr><td>{{ f.destino }}</td><td>{{ f.total }}</td><td>{{ f.atendidas }}</td></tr>
+              {% empty %}<tr><td colspan="3" class="text-muted small">Sin datos.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="row g-2 mb-3">
+      <div class="col-6"><div class="card"><div class="card-body py-2 px-3">
+        <div class="small text-muted">CPO-D promedio</div>
+        <div class="fs-4 fw-semibold">{{ datos.odontologia.promedio }}</div>
+        <div class="small text-muted">{{ datos.odontologia.atenciones_con_indice }} atenciones</div>
+      </div></div></div>
+      <div class="col-6"><div class="card"><div class="card-body py-2 px-3">
+        <div class="small text-muted">Impacto psicopedagógico</div>
+        <div class="fs-4 fw-semibold">
+          {% if datos.psicopedagogia.variacion_promedio is not None %}{{ datos.psicopedagogia.variacion_promedio }}{% else %}—{% endif %}
+        </div>
+        <div class="small text-muted">{{ datos.psicopedagogia.comparables }} comparables</div>
+      </div></div></div>
+      <div class="col-6"><div class="card"><div class="card-body py-2 px-3">
+        <div class="small text-muted">Talleres: personas alcanzadas</div>
+        <div class="fs-4 fw-semibold">{{ datos.talleres.personas_alcanzadas }}</div>
+      </div></div></div>
+      <div class="col-6"><div class="card"><div class="card-body py-2 px-3">
+        <div class="small text-muted">Asistencias a talleres</div>
+        <div class="fs-4 fw-semibold">{{ datos.talleres.asistencias }}</div>
+      </div></div></div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Becas vigentes por tipo</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <tbody>
+              {% for b in datos.becas %}
+              <tr><td>{{ b.tipo }}</td><td class="text-end">{{ b.total }}</td></tr>
+              {% empty %}<tr><td class="text-muted small">Sin periodo vigente o sin becas.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Laboratorio por estado</div>
+      <div class="card-body small text-muted">
+        {% for estado, n in datos.laboratorio.por_estado.items %}{{ estado }}: {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}
+        {% if not datos.laboratorio.por_estado %}Sin órdenes.{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

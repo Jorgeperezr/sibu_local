@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}Informe estadístico · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Informe estadístico</h1>
+  <div class="d-flex gap-2">
+    <a href="{% url 'reportes:informe_servicio_pdf' %}?{{ parametros }}" class="btn btn-sm btn-primary">
+      <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+    </a>
+    {% if not confidencial %}
+    <a href="{% url 'reportes:informe_servicio_xlsx' %}?{{ parametros }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-file-earmark-excel"></i> Nómina en Excel
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% comment %}
+Un solo formulario para todo: el rango, qué variables entran, qué anexos se
+adjuntan y con qué columnas. `elegir=1` viaja oculto porque un formulario no
+envía las casillas que se desmarcaron: sin ese testigo, «quité todas las
+variables» llegaría al servidor idéntico a «acabo de abrir la pantalla».
+{% endcomment %}
+<form method="get" class="card mb-3">
+  <input type="hidden" name="elegir" value="1">
+  <div class="card-body">
+    <div class="row g-2 align-items-end mb-3">
+      {% if servicios|length > 1 %}
+      <div class="col-auto">
+        <label class="form-label small mb-1">Servicio</label>
+        <select name="servicio" class="form-select form-select-sm">
+          {% for s in servicios %}
+            <option value="{{ s.pk }}" {% if s.pk == servicio.pk %}selected{% endif %}>{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-auto">
+        <label class="form-label small mb-1">Desde</label>
+        <input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Hasta</label>
+        <input type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-primary">Generar informe</button>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="fw-semibold small mb-2">Variables que se informan</div>
+        {% for clave, etiqueta in variables_disponibles %}
+        <div class="form-check form-check-sm">
+          <input class="form-check-input" type="checkbox" name="variables" value="{{ clave }}"
+                 id="var-{{ clave }}" {% if clave in eleccion.variables %}checked{% endif %}>
+          <label class="form-check-label small" for="var-{{ clave }}">{{ etiqueta }}</label>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="col-lg-4">
+        <div class="fw-semibold small mb-2">Anexos</div>
+        {% for clave, etiqueta in anexos_disponibles %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="anexos" value="{{ clave }}"
+                 {% comment %}
+                 En un servicio confidencial la casilla no se marca aunque el
+                 anexo venga pedido por la URL: marcada y deshabilitada a la vez
+                 se lee como «está activo pero no lo puedes tocar», y lo que
+                 pasa es lo contrario —no se va a adjuntar—.
+                 {% endcomment %}
+                 id="anexo-{{ clave }}"
+                 {% if clave in eleccion.anexos and not confidencial %}checked{% endif %}
+                 {% if confidencial %}disabled{% endif %}>
+          <label class="form-check-label small" for="anexo-{{ clave }}">{{ etiqueta }}</label>
+        </div>
+        {% endfor %}
+        {% if confidencial %}
+          <p class="small text-muted mt-2 mb-0">
+            Este servicio no adjunta anexos: nombran a pacientes en un documento
+            que sale de la Unidad. Los conteos agregados de arriba sí se informan.
+          </p>
+        {% endif %}
+
+        <div class="fw-semibold small mt-3 mb-2">Identidad</div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="identidad" value="proteger"
+                 id="id-proteger" {% if eleccion.proteger %}checked{% endif %}>
+          <label class="form-check-label small" for="id-proteger">
+            Proteger: sin cédula, teléfono, correo ni número de expediente
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="identidad" value="mostrar"
+                 id="id-mostrar" {% if not eleccion.proteger %}checked{% endif %}>
+          <label class="form-check-label small" for="id-mostrar">
+            Mostrar los datos identificativos que se marquen
+          </label>
+        </div>
+        <p class="small text-muted mt-2 mb-0">
+          El número de expediente se compone con la cédula (<code>EXP-…</code>),
+          así que se retira junto con ella: publicarlo sería publicar la cédula.
+        </p>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="fw-semibold small mb-2">Columnas de los anexos</div>
+        {% for clave, columna in columnas_disponibles %}
+        <div class="form-check form-check-sm">
+          <input class="form-check-input" type="checkbox" name="columnas" value="{{ clave }}"
+                 id="col-{{ clave }}" {% if clave in eleccion.columnas_marcadas %}checked{% endif %}>
+          <label class="form-check-label small" for="col-{{ clave }}">
+            {{ columna.etiqueta }}{% if columna.identificativa %}
+              <span class="badge bg-warning-subtle text-warning-emphasis border">identifica</span>
+            {% endif %}
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</form>
+
+{% comment %}
+Las dos cifras van una junto a otra a propósito: no son la misma pregunta.
+Una persona atendida tres veces en el rango suma tres atenciones pero sigue
+siendo una sola persona atendida.
+{% endcomment %}
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="small text-muted">Atenciones</div>
+        <div class="fs-3 fw-bold">{{ datos.total_atenciones }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="small text-muted">Personas atendidas</div>
+        <div class="fs-3 fw-bold">{{ datos.total_pacientes }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="small text-muted">
+  {{ datos.servicio.nombre }}{% if desde or hasta %} · entre {{ desde|date:"d/m/Y"|default:"el inicio" }} y {{ hasta|date:"d/m/Y"|default:"la fecha" }}{% endif %}.
+  Los porcentajes de las tablas de abajo son sobre el total de atenciones, no
+  sobre personas: quien fue atendido tres veces cuenta tres veces.
+</p>
+
+<div class="row g-3">
+  {% for seccion in datos.categorias %}
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header">{{ seccion.etiqueta }}</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0"><tbody>
+            {% for f in seccion.filas %}
+            <tr><td>{{ f.etiqueta }}</td><td class="text-end">{{ f.total }}</td><td class="text-end text-muted">{{ f.porcentaje }}%</td></tr>
+            {% endfor %}
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% comment %}
+Las banderas van juntas en una sola tabla: no son un desglose por categorías
+sino presencia o ausencia de una alerta, y cada una sola en su tarjeta se leería
+como si fuera comparable con «Sexo». La tabla no aparece si no se incluyó
+ninguna: un recuadro con el título y sin filas se lee como un cero.
+{% endcomment %}
+{% if datos.banderas %}
+<div class="row g-3 mt-0">
+  <div class="col-md-8">
+    <div class="card h-100">
+      <div class="card-header">Otras condiciones (atenciones con la alerta activa)</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            {% for s in datos.banderas %}
+            <tr><td>{{ s.etiqueta }}</td><td class="text-end">{{ s.total }}</td><td class="text-end text-muted">{{ s.porcentaje }}%</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-0">
+          Estas no son categorías sino banderas: se cuenta cuántas de las
+          atenciones del período tenían la alerta activa al generar el informe,
+          no en el momento exacto de cada atención. El porcentaje, igual que en
+          las demás tablas, es sobre el total de atenciones.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if anexos.aviso %}
+<div class="alert alert-warning mt-3">{{ anexos.aviso }}</div>
+{% endif %}
+
+{% if anexos.nomina %}
+<h2 class="h5 mt-4">Anexo 1 · Nómina de personas atendidas</h2>
+{% include "reportes/_tabla_anexo.html" with anexo=anexos.nomina %}
+{% endif %}
+
+{% if anexos.evidencias %}
+<h2 class="h5 mt-4">Anexo · Evidencia de los valores reportados</h2>
+<p class="small text-muted">
+  Cada bloque son las personas que componen una cifra del informe. La suma de la
+  columna «Atenciones» de un bloque es exactamente el valor reportado arriba.
+</p>
+{% for grupo in anexos.evidencias %}
+  <h3 class="h6 mt-3">{{ grupo.etiqueta_variable }}: {{ grupo.valor }}
+    <span class="text-muted fw-normal">— {{ grupo.personas }} {{ grupo.personas|plural:"persona,personas" }}, {{ grupo.atenciones }} {{ grupo.atenciones|plural:"atención,atenciones" }}</span>
+  </h3>
+  {% include "reportes/_tabla_anexo.html" with anexo=grupo %}
+{% endfor %}
+{% endif %}
+{% endblock %}

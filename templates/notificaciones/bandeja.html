@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Notificaciones · SIBU{% endblock %}
+{% block content %}
+
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Notificaciones</h1>
+    <small class="text-muted d-block">
+      {% if sin_leer %}{{ sin_leer }} sin leer{% else %}Todo al día{% endif %}
+    </small>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if solo_sin_leer %}
+    <a href="{% url 'notificaciones:bandeja' %}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+    {% else %}
+    <a href="?filtro=sin_leer" class="btn btn-sm btn-outline-secondary">Solo sin leer</a>
+    {% endif %}
+    {% if sin_leer %}
+    <form method="post" action="{% url 'notificaciones:leer_todas' %}">
+      {% csrf_token %}
+      <button class="btn btn-sm btn-outline-primary">Marcar todas como leídas</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if notificaciones %}
+<div class="list-group">
+  {% for n in notificaciones %}
+  <div class="list-group-item
+              {% if n.pk in urgentes and n.estado != 'leida' %}list-group-item-danger{% endif %}">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <div class="fw-semibold">
+          {% if n.estado != "leida" %}<span class="badge bg-primary">Nueva</span>{% endif %}
+          {{ n.titulo }}
+        </div>
+        <p class="mb-1 small">{{ n.mensaje|linebreaksbr }}</p>
+        <small class="text-muted">
+          {{ n.creado_en|date:"d/m/Y H:i" }}
+          {% if n.leida_en %}· leída el {{ n.leida_en|date:"d/m/Y H:i" }}{% endif %}
+        </small>
+      </div>
+      {% if n.estado != "leida" %}
+      <form method="post" action="{% url 'notificaciones:leer' n.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-secondary text-nowrap">Marcar leída</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-secondary">
+  {% if solo_sin_leer %}No queda ninguna sin leer.{% else %}Todavía no hay notificaciones.{% endif %}
+</div>
+{% endif %}
+
+<p class="small text-muted mt-3 mb-0">
+  Cada quien ve las suyas. La hora de lectura se guarda: sobre un valor crítico
+  de laboratorio, «cuándo se vio» es lo que habría que poder responder después.
+</p>
+{% endblock %}

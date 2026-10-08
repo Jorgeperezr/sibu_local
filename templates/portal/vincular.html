@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Vincular cuenta — Portal SIBU{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width:560px">
+  <h1 class="h4 sibu-titulo">Vincule su cuenta</h1>
+  <p class="text-muted small">
+    Para usar el portal necesitamos confirmar que usted es usted. El código de
+    verificación se envía <strong>únicamente a su correo institucional</strong>,
+    el que consta en su matrícula.
+  </p>
+
+  {% if pendiente and pendiente.vigente %}
+  <div class="card">
+    <div class="card-body">
+      <p class="small">Código enviado a <strong>{{ pendiente.correo_destino }}</strong>.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="confirmar">
+        <label class="form-label small">Código de confirmación</label>
+        <input name="token" class="form-control mb-2" required autocomplete="off">
+        <button class="btn btn-primary">Confirmar</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <label class="form-label small">Su número de cédula</label>
+        <input name="cedula" class="form-control mb-2" maxlength="10" required>
+        <button class="btn btn-primary">Enviar código a mi correo institucional</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

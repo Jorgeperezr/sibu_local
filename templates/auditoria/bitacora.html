@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Bitácora · SIBU{% endblock %}
+{% block content %}
+
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Bitácora de accesos</h1>
+    <small class="text-muted d-block">
+      {{ total }} registro{{ total|pluralize }} · quién hizo qué, cuándo y sobre qué
+    </small>
+  </div>
+</div>
+
+{% comment %}
+La bitácora habla de contenido clínico, así que se le aplica el mismo sello que
+al contenido: de una entrada de un servicio confidencial se ve el actor —que es
+lo que hace falta para pedir cuentas— y no el paciente. La vista ya entrega las
+filas resueltas, así que aquí no hay un expediente que imprimir por descuido.
+{% endcomment %}
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <label class="form-label small mb-0" for="usuario">Usuario</label>
+    <select name="usuario" id="usuario" class="form-select form-select-sm">
+      <option value="">Todos</option>
+      {% for id, nombre in opciones.usuarios %}
+      <option value="{{ id }}" {% if activos.usuario == id|stringformat:"s" %}selected{% endif %}>{{ nombre }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small mb-0" for="accion">Acción</label>
+    <select name="accion" id="accion" class="form-select form-select-sm">
+      <option value="">Todas</option>
+      {% for valor, etiqueta in opciones.acciones %}
+      <option value="{{ valor }}" {% if activos.accion == valor %}selected{% endif %}>{{ etiqueta }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small mb-0" for="resultado">Resultado</label>
+    <select name="resultado" id="resultado" class="form-select form-select-sm">
+      <option value="">Todos</option>
+      {% for valor in opciones.resultados %}
+      <option value="{{ valor }}" {% if activos.resultado == valor %}selected{% endif %}>{{ valor }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small mb-0" for="desde">Desde</label>
+    <input type="date" name="desde" id="desde" value="{{ desde }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small mb-0" for="hasta">Hasta</label>
+    <input type="date" name="hasta" id="hasta" value="{{ hasta }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-12 d-flex flex-wrap align-items-end gap-2">
+    <button class="btn btn-sm btn-primary">Filtrar</button>
+    {% if activos or desde or hasta %}
+    <a href="{% url 'auditoria:bitacora' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-x-lg"></i> Quitar filtros
+    </a>
+    {% endif %}
+    <a href="?resultado=denegado" class="btn btn-sm btn-outline-danger">
+      Solo intentos rechazados
+    </a>
+  </div>
+</form>
+
+{% if filas %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Fecha y hora</th>
+          <th>Quién</th>
+          <th>Acción</th>
+          <th>Servicio</th>
+          <th>Sobre</th>
+          <th>Resultado</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in filas %}
+        <tr {% if f.registro.resultado == "denegado" %}class="table-danger"{% endif %}>
+          <td class="text-nowrap small">{{ f.registro.fecha_hora|date:"d/m/Y H:i:s" }}</td>
+          <td class="small">
+            {% if f.registro.usuario %}
+              {{ f.registro.usuario.get_full_name|default:f.registro.usuario.username }}
+              <span class="text-muted d-block">{{ f.registro.rol_activo }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="small">{{ f.registro.get_accion_display }}</td>
+          <td class="small">{{ f.registro.servicio|default:"—" }}</td>
+          <td class="small">
+            {% if f.velado %}
+              <span class="text-muted fst-italic">
+                <i class="bi bi-shield-lock"></i> paciente no visible
+              </span>
+            {% elif f.expediente %}
+              {{ f.expediente.persona.nombre_completo }}
+              <span class="text-muted d-block">{{ f.expediente.numero_expediente }}</span>
+            {% else %}
+              <span class="text-muted">{{ f.registro.entidad }} {{ f.registro.entidad_id }}</span>
+            {% endif %}
+          </td>
+          <td class="small">
+            {% if f.registro.resultado == "denegado" %}
+              <span class="badge bg-danger">rechazado</span>
+            {% else %}{{ f.registro.resultado }}{% endif %}
+          </td>
+          <td class="small text-muted">{{ f.registro.ip|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if pagina.has_other_pages %}
+<nav class="mt-3"><ul class="pagination pagination-sm">
+  {% if pagina.has_previous %}
+  <li class="page-item"><a class="page-link" href="?{{ arrastre }}{% if arrastre %}&{% endif %}pagina={{ pagina.previous_page_number }}">Anterior</a></li>
+  {% endif %}
+  <li class="page-item disabled"><span class="page-link">{{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li>
+  {% if pagina.has_next %}
+  <li class="page-item"><a class="page-link" href="?{{ arrastre }}{% if arrastre %}&{% endif %}pagina={{ pagina.next_page_number }}">Siguiente</a></li>
+  {% endif %}
+</ul></nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-secondary">No hay registros que coincidan.</div>
+{% endif %}
+
+<p class="small text-muted mt-3 mb-0">
+  De una entrada de un servicio confidencial se ve quién accedió y cuándo, no
+  sobre quién: la identidad del paciente es justo lo que el sello protege, y
+  una bitácora no es una excepción a esa regla.
+</p>
+{% endblock %}

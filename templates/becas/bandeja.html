@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Becas — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera"><h1 class="h4 sibu-titulo mb-0">Becas y ayudas económicas</h1>
+  {% include "_exportar_servicio.html" with codigo="becas-y-ayudas-economicas" %}
+</div>
+{% if periodo %}
+<p class="text-muted">Periodo vigente: {{ periodo.codigo }} — {{ periodo.nombre }}</p>
+
+{% if resumen %}
+<div class="row g-2 mb-3">
+  {% for r in resumen %}
+  <div class="col-auto">
+    <div class="card"><div class="card-body py-2 px-3">
+      <div class="small text-muted">{{ r.tipo }}</div>
+      <div class="fs-5 fw-semibold">{{ r.total }}</div>
+    </div></div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if beneficiarios %}
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+  <thead class="table-light">
+    <tr><th>Beneficiario</th><th>Tipo</th><th>Desde</th><th>Estado</th><th>Resolución</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for b in beneficiarios %}
+    <tr>
+      <td>{{ b.expediente.persona.nombre_completo }}</td>
+      <td class="small">{{ b.tipo_beca.nombre }}</td>
+      <td class="small">{{ b.periodo_desde.codigo }}</td>
+      <td>
+        {% if b.estado == "suspendido" %}<span class="badge bg-warning text-dark">Suspendido</span>
+        {% elif b.estado == "terminado" %}<span class="badge bg-secondary">Terminado</span>
+        {% else %}<span class="badge bg-success-subtle text-success-emphasis">{{ b.get_estado_display }}</span>{% endif %}
+      </td>
+      <td class="small text-muted">{{ b.resolucion|default:"—" }}</td>
+      <td class="text-end"><a href="{% url 'becas:ficha' b.pk %}" class="btn btn-sm btn-primary">Abrir</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="text-muted">No hay beneficiarios vigentes en este periodo.</p>
+{% endif %}
+
+{% else %}
+<div class="alert alert-warning">
+  No hay un periodo académico vigente. Márquelo antes de gestionar becas.
+</div>
+{% endif %}
+
+<div class="alert alert-secondary small mt-3">
+  SIBU registra y da seguimiento a los beneficiarios. La adjudicación y el
+  desembolso los gestiona el sistema institucional de becas.
+</div>
+{% endblock %}

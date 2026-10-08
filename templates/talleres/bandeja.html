@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Talleres — SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">Talleres y actividades grupales</h1>
+
+<div class="row g-2 mb-3">
+  <div class="col-auto"><div class="card"><div class="card-body py-2 px-3">
+    <div class="small text-muted">Personas alcanzadas</div>
+    <div class="fs-5 fw-semibold">{{ cobertura.personas_alcanzadas }}</div>
+  </div></div></div>
+  <div class="col-auto"><div class="card"><div class="card-body py-2 px-3">
+    <div class="small text-muted">Asistencias</div>
+    <div class="fs-5 fw-semibold">{{ cobertura.asistencias }}</div>
+  </div></div></div>
+</div>
+<p class="small text-muted">
+  Quien asistió a tres talleres es <strong>una</strong> persona alcanzada, no tres.
+</p>
+
+{% if talleres %}
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+  <thead class="table-light">
+    <tr><th>Código</th><th>Tema</th><th>Fecha</th><th>Responsable</th><th>Participantes</th><th>Estado</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for t in talleres %}
+    <tr>
+      <td class="small"><code>{{ t.codigo }}</code></td>
+      <td>{{ t.tema|truncatechars:50 }}</td>
+      <td class="small">{{ t.fecha|date:"d/m/Y" }}</td>
+      <td class="small">{{ t.responsable.usuario.get_full_name|default:"—" }}</td>
+      <td>{{ t.total_participantes }}</td>
+      <td>
+        {% if t.estado == "cerrado" %}<span class="badge bg-secondary">Cerrado</span>
+        {% elif t.estado == "documentado" %}<span class="badge bg-info text-dark">Documentado</span>
+        {% elif t.estado == "ejecutado" %}<span class="badge bg-success">Ejecutado</span>
+        {% else %}<span class="badge bg-light text-dark border">Planificado</span>{% endif %}
+      </td>
+      <td class="text-end"><a href="{% url 'talleres:detalle' t.pk %}" class="btn btn-sm btn-primary">Abrir</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}<p class="text-muted">No hay talleres registrados.</p>{% endif %}
+{% endblock %}

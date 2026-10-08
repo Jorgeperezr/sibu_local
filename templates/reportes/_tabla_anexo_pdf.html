@@ -1,0 +1,26 @@
+{% comment %}
+La tabla de un anexo en el PDF. El pie que dice qué columnas se retiraron va
+con la tabla y no al final del documento: un anexo que se lea suelto —se
+fotocopia una página— tiene que llevar consigo la advertencia.
+{% endcomment %}
+<table>
+  <thead><tr>{% for e in anexo.encabezados %}<th>{{ e }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for fila in anexo.filas %}
+    <tr>{% for celda in fila %}<td>{{ celda }}</td>{% endfor %}</tr>
+    {% empty %}
+    <tr><td colspan="{{ anexo.encabezados|length }}">Sin personas en el rango.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="nota">
+  {% if anexo.protegida %}
+    Identidad protegida: no se reportan cédula, teléfono, correo institucional
+    ni número de expediente. Cada fila se cita por su código.
+    {% if anexo.retiradas %}Se retiraron las columnas marcadas: {{ anexo.retiradas|join:", " }}.{% endif %}
+  {% else %}
+    Este anexo incluye datos identificativos de las personas atendidas.
+    Custodia de la Unidad de Bienestar Universitario: no se difunde fuera del
+    servicio que lo generó.
+  {% endif %}
+</div>

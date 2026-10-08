@@ -1,0 +1,17 @@
+{% comment %}
+Botón de exportación de la bandeja de un servicio.
+
+Se incluye con `{% include "_exportar_servicio.html" with codigo="medicina" %}`.
+Vive en un fragmento y no repetido en cada plantilla porque está en las ocho
+bandejas: ocho copias se separan la primera vez que alguien cambia una.
+
+No se pinta para un servicio confidencial: su historial no se exporta —el
+archivo sale de la Unidad igual que una hoja compartida— y ofrecer un botón que
+va a decir que no se puede es peor que no ofrecerlo.
+{% endcomment %}
+{% if codigo not in servicios_confidenciales %}
+<a href="{% url 'reportes:exportar_hoja' %}?servicio={{ codigo }}"
+   class="btn btn-sm btn-outline-secondary" title="Historial de este servicio en Excel">
+  <i class="bi bi-file-earmark-spreadsheet"></i> Exportar historial
+</a>
+{% endif %}

@@ -1,0 +1,6 @@
+-r base.txt
+
+# Servidor WSGI de la portable. `waitress` y no `gunicorn` porque gunicorn no
+# funciona en Windows, que es donde van a estar los computadores de la sección.
+# Es Python puro: no hay nada que compilar al armar la carpeta.
+waitress==3.0.2

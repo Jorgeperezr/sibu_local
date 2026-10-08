@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}Trabajo Social · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Trabajo Social</h1>
+    <small class="text-muted d-block">
+      Fichas socioeconómicas vigentes, la más recientemente tocada primero.
+    </small>
+  </div>
+  {% include "_exportar_servicio.html" with codigo="trabajo-social" %}
+</div>
+
+{% comment %}
+Los estratos, incluidos los que están en cero. Un tramo ausente de la tabla se
+lee como «no lo hemos mirado»; uno con cero, como «no hay ninguno». No es lo
+mismo, y de aquí sale a quién se prioriza.
+{% endcomment %}
+<div class="row g-2 mb-3">
+  {% for r in resumen %}
+  <div class="col-6 col-lg-3 col-xl">
+    <a href="?estrato={{ r.estrato|urlencode }}"
+       class="card text-decoration-none h-100 {% if estrato == r.estrato %}border-primary{% endif %}">
+      <div class="card-body py-2">
+        <div class="h4 mb-0 {% if r.estrato == 'Extrema vulnerabilidad' %}text-danger{% elif r.estrato == 'Vulnerabilidad alta' %}text-warning{% else %}text-body{% endif %}">
+          {{ r.total }}
+        </div>
+        <small class="text-muted">{{ r.estrato }}</small>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-6">
+    <input name="q" value="{{ q }}" class="form-control"
+           placeholder="Cédula, nombre o apellido">
+    <div class="form-text">Al menos {{ minimo_texto }} letras.</div>
+  </div>
+  <div class="col-md-4">
+    <select name="estrato" class="form-select">
+      <option value="">Todos los estratos</option>
+      {% for e in estratos %}
+      <option value="{{ e }}" {% if estrato == e %}selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 d-grid">
+    <button class="btn btn-outline-primary">Filtrar</button>
+  </div>
+</form>
+
+{% if pagina.object_list %}
+<p class="text-muted small">{{ total }} ficha{{ total|pluralize:"s" }} vigente{{ total|pluralize:"s" }}.</p>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Persona</th><th>Cédula</th><th>Versión</th><th>Origen</th>
+          <th class="text-end">Puntaje</th><th>Estrato</th><th>Actualizada</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in pagina.object_list %}
+        <tr>
+          <td>{{ f.expediente.persona.nombre_completo }}</td>
+          <td class="font-monospace small">{{ f.expediente.persona.cedula }}</td>
+          <td>v{{ f.version }}</td>
+          <td><span class="badge bg-light text-dark border">{{ f.get_origen_display }}</span></td>
+          {% comment %}
+          `is not None`: un puntaje de 0,00 SBU es falsy y salía como «—», o
+          sea que los hogares en extrema vulnerabilidad —los que no declaran
+          ingresos— eran los únicos indistinguibles de una ficha sin calcular.
+          {% endcomment %}
+          <td class="text-end text-nowrap">{% if f.puntaje is not None %}{{ f.puntaje|numero }} SBU{% else %}—{% endif %}</td>
+          <td>
+            {% if f.estrato %}
+            <span class="badge {% if f.estrato == 'Extrema vulnerabilidad' %}bg-danger{% elif f.estrato == 'Vulnerabilidad alta' %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">
+              {{ f.estrato }}
+            </span>
+            {% else %}
+            <span class="text-muted small">sin verificar</span>
+            {% endif %}
+          </td>
+          <td class="small text-muted">{{ f.actualizado_en|date:"d/m/Y" }}</td>
+          <td class="text-end">
+            <a href="{% url 'trabajo_social:ficha' f.expediente_id %}"
+               class="btn btn-sm btn-primary">Abrir</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if pagina.has_other_pages %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm">
+    {% if pagina.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?q={{ q }}&estrato={{ estrato|urlencode }}&pagina={{ pagina.previous_page_number }}">Anterior</a>
+    </li>
+    {% endif %}
+    <li class="page-item disabled">
+      <span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    </li>
+    {% if pagina.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?q={{ q }}&estrato={{ estrato|urlencode }}&pagina={{ pagina.next_page_number }}">Siguiente</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-secondary">
+  {% if q or estrato %}
+    Ninguna ficha coincide con lo buscado.
+  {% else %}
+    Todavía no hay fichas socioeconómicas. Se crean desde el expediente de la
+    persona, o se pre-pueblan solas al cargar la base institucional.
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

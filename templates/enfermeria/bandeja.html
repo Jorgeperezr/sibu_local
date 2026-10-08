@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Enfermería — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Enfermería <small class="text-muted fs-6">— triajes de hoy</small></h1>
+  <a href="{% url 'expediente:buscar' %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-search"></i> Buscar expediente
+  </a>
+  {% include "_exportar_servicio.html" with codigo="enfermeria" %}
+</div>
+
+{% if triajes %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Paciente</th><th>Hora</th><th>T°</th><th>FC</th><th>PA</th>
+        <th>Sat O₂</th><th>Responsable</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in triajes %}
+      <tr>
+        <td>{{ t.expediente.persona.nombre_completo }}</td>
+        <td class="small">{{ t.fecha_hora|time:"H:i" }}</td>
+        <td class="small">{{ t.temperatura|default:"—" }}</td>
+        <td class="small">{{ t.fc|default:"—" }}</td>
+        <td class="small">
+          {% if t.pa_sistolica and t.pa_diastolica %}{{ t.pa_sistolica }}/{{ t.pa_diastolica }}
+          {% else %}—{% endif %}
+        </td>
+        <td class="small">{{ t.sat_o2|default:"—" }}</td>
+        <td class="small">{{ t.responsable.usuario.get_full_name|default:"—" }}</td>
+        <td class="text-end">
+          <a href="{% url 'enfermeria:triaje' t.expediente_id %}"
+             class="btn btn-sm btn-primary">Abrir</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">
+  No se han registrado triajes hoy. El triaje se toma desde el expediente del
+  paciente.
+</p>
+{% endif %}
+{% endblock %}

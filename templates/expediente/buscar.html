@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Buscar expediente · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Buscar expediente</h1>
+  <div class="d-flex gap-2">
+    <a href="{% url 'expediente:alta_masiva' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-list-ol"></i> Varias cédulas
+    </a>
+    <a href="{% url 'expediente:nuevo' %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-person-plus"></i> Registrar persona
+    </a>
+  </div>
+</div>
+
+{% comment %}
+Dos formularios y no uno con adivinanza: la cédula resuelve contra la base
+institucional —y abre expediente si hace falta—, el nombre solo consulta lo ya
+registrado. No hacen lo mismo, así que no se piden en la misma casilla.
+{% endcomment %}
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <form method="get" class="card h-100">
+      <div class="card-body">
+        <label class="form-label" for="cedula">Por cédula</label>
+        <div class="d-flex gap-2">
+          <input id="cedula" type="text" name="cedula" value="{{ cedula|default:'' }}"
+                 class="form-control" placeholder="1104567894" maxlength="13" autofocus
+                 list="sugerencias-cedula" autocomplete="off">
+          <datalist id="sugerencias-cedula"></datalist>
+          <button class="btn btn-primary">Buscar</button>
+        </div>
+        <div class="form-text">Consulta la base institucional y abre el expediente.</div>
+      </div>
+    </form>
+  </div>
+  <div class="col-md-6">
+    <form method="get" class="card h-100">
+      <div class="card-body">
+        <label class="form-label" for="nombre">Por nombre o apellido</label>
+        <div class="d-flex gap-2">
+          <input id="nombre" type="text" name="nombre" value="{{ nombre|default:'' }}"
+                 class="form-control" placeholder="Jaramillo Ochoa" maxlength="120"
+                 list="sugerencias-nombre" autocomplete="off">
+          <datalist id="sugerencias-nombre"></datalist>
+          <button class="btn btn-outline-primary">Buscar</button>
+        </div>
+        <div class="form-text">Solo entre las personas ya registradas.</div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if resultados %}
+<div class="card mb-4">
+  <div class="card-header">Coincidencias con «{{ nombre }}»</div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr><th>Persona</th><th>Cédula</th><th>Vínculo</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for p in resultados %}
+        <tr>
+          <td>{{ p.nombre_completo }}</td>
+          <td>{{ p.cedula }}</td>
+          <td><span class="badge bg-light text-dark border">{{ p.get_tipo_vinculo_display }}</span></td>
+          <td class="text-end">
+            {% if p.expediente %}
+              <a href="{% url 'expediente:detalle' p.expediente.id %}"
+                 class="btn btn-sm btn-outline-primary">Abrir expediente</a>
+            {% else %}
+              <span class="text-muted small">Sin expediente</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if cedula and not persona %}
+{% comment %}
+El aviso de arriba dice que la persona puede registrarse como externa. Sin este
+enlace era una promesa sin salida: había que abrir el shell.
+{% endcomment %}
+<a href="{% url 'expediente:nuevo' %}?cedula={{ cedula|urlencode }}" class="btn btn-primary mb-4">
+  Registrar a {{ cedula }} y abrir su expediente
+</a>
+{% endif %}
+
+{% if persona %}
+<div class="card border-{{ semaforo }}">
+  <div class="card-header bg-{{ semaforo }} text-white d-flex justify-content-between">
+    <span>{{ persona.nombre_completo }}</span>
+    <span class="badge bg-light text-dark">{{ persona.get_tipo_vinculo_display }}</span>
+  </div>
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Cédula</dt><dd class="col-sm-3">{{ persona.cedula }}</dd>
+      <dt class="col-sm-3">Correo</dt><dd class="col-sm-3">{{ persona.correo_institucional|default:"—" }}</dd>
+      {% if institucional %}
+      <dt class="col-sm-3">Facultad</dt><dd class="col-sm-3">{{ institucional.facultad|default:"—" }}</dd>
+      <dt class="col-sm-3">Carrera</dt><dd class="col-sm-3">{{ institucional.carrera|default:"—" }}</dd>
+      <dt class="col-sm-3">Ciclo</dt><dd class="col-sm-3">{{ institucional.ciclo|default:"—" }}</dd>
+      <dt class="col-sm-3">Estado</dt><dd class="col-sm-3">{{ institucional.estado|default:"—" }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+  <div class="card-footer">
+    {% if expediente %}
+      <a href="{% url 'expediente:detalle' expediente.id %}" class="btn btn-outline-primary">
+        Abrir expediente {{ expediente.numero_expediente }}
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% comment %}
+Autocompletado contra la base institucional cargada. Es una mejora progresiva:
+sin JavaScript las dos casillas siguen funcionando exactamente igual, porque
+`<datalist>` vacío no estorba y el envío del formulario no depende de esto.
+
+Solo sugiere: no rellena el expediente ni resuelve nada. Quien decide sigue
+siendo el profesional, que pulsa Buscar.
+{% endcomment %}
+<script>
+(function () {
+  const URL_SUGERENCIAS = "{% url 'academico:autocompletar' %}";
+
+  function conectar(idCampo, idLista, formato) {
+    const campo = document.getElementById(idCampo);
+    const lista = document.getElementById(idLista);
+    if (!campo || !lista) return;
+
+    let temporizador = null;
+    campo.addEventListener("input", function () {
+      // Se espera a que deje de teclear: una consulta por pulsación
+      // convertiría el buscador en un martillo contra la base.
+      clearTimeout(temporizador);
+      const texto = campo.value.trim();
+      if (texto.length < 3) { lista.innerHTML = ""; return; }
+      temporizador = setTimeout(function () {
+        fetch(URL_SUGERENCIAS + "?q=" + encodeURIComponent(texto))
+          .then(function (r) { return r.ok ? r.json() : { resultados: [] }; })
+          .then(function (datos) {
+            lista.innerHTML = "";
+            (datos.resultados || []).forEach(function (p) {
+              const opcion = document.createElement("option");
+              opcion.value = formato(p).valor;
+              opcion.label = formato(p).etiqueta;
+              lista.appendChild(opcion);
+            });
+          })
+          .catch(function () { lista.innerHTML = ""; });
+      }, 250);
+    });
+  }
+
+  conectar("cedula", "sugerencias-cedula", function (p) {
+    return {
+      valor: p.cedula,
+      etiqueta: p.nombre_completo + (p.carrera ? " — " + p.carrera : ""),
+    };
+  });
+  conectar("nombre", "sugerencias-nombre", function (p) {
+    return {
+      valor: p.nombre_completo,
+      etiqueta: p.cedula + (p.carrera ? " — " + p.carrera : ""),
+    };
+  });
+})();
+</script>
+{% endblock %}

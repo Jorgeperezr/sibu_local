@@ -1,0 +1,50 @@
+# --- Núcleo ---
+Django==5.1.4
+djangorestframework==3.15.2
+django-environ==0.11.2
+psycopg[binary]==3.2.3
+gunicorn==23.0.0
+# WhiteNoise va en base y no en prod: `config.settings.prod` lo exige y el CI
+# tiene que poder EJERCITAR el almacenamiento de producción —recolectar los
+# estáticos con el manifiesto—. Con la dependencia solo en prod.txt esa prueba
+# no corría donde importa, que es antes de desplegar.
+whitenoise==6.8.2
+
+# --- API / docs ---
+drf-spectacular==0.28.0
+django-filter==24.3
+djangorestframework-simplejwt==5.3.1
+
+# --- Tareas asíncronas ---
+celery==5.4.0
+redis==5.2.1
+django-celery-beat==2.7.0
+
+# --- Seguridad / auth ---
+django-otp==1.5.4
+qrcode==8.0
+argon2-cffi==23.1.0
+django-axes==7.0.0
+django-csp==3.8
+mozilla-django-oidc==4.0.1
+django-guardian==2.4.0
+
+# --- Auditoría / historial ---
+django-simple-history==3.7.0
+
+# --- Cargas de datos (ficha socioeconómica) ---
+pandas==2.2.3
+openpyxl==3.1.5
+
+# --- Documentos / PDF / firma ---
+weasyprint==63.1
+pyhanko==0.25.3
+
+# --- Google Workspace (evidencias de talleres + correo) ---
+google-api-python-client==2.157.0
+google-auth==2.37.0
+google-auth-oauthlib==1.2.1
+
+# --- Utilidades ---
+Pillow==11.0.0
+python-dateutil==2.9.0.post0

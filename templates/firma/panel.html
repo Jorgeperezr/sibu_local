@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Firma electrónica — SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">Firma electrónica</h1>
+<p class="text-muted">
+  {{ solicitud.atencion.expediente.persona.nombre_completo }} ·
+  {{ solicitud.atencion.servicio.nombre }} · {{ solicitud.nombre_documento }}
+</p>
+
+{% if solicitud.estado == "firmada" %}
+<div class="alert alert-success">
+  <strong>Documento firmado.</strong>
+  {% if firma %}
+  <div class="small mt-1">
+    Firmado por {{ firma.firmante_nombre }}{% if firma.firmante_cedula %} ({{ firma.firmante_cedula }}){% endif %}<br>
+    {% if firma.entidad_certificadora %}
+    Entidad certificadora: {{ firma.entidad_certificadora }} ·
+    Serial: {{ firma.certificado_serial }}<br>
+    {% else %}
+    {% comment %}
+    Firmado fuera de SIBU: el certificado nunca llegó al servidor, así que no
+    hay entidad ni serial que mostrar. Decir lo contrario sería afirmar una
+    verificación que no se hizo.
+    {% endcomment %}
+    <span class="text-muted">
+      Firmado en el computador del profesional; SIBU no verificó el certificado.
+    </span><br>
+    {% endif %}
+    Huella SHA-256: <code>{{ solicitud.hash_firmado }}</code>
+  </div>
+  {% endif %}
+</div>
+<a href="{% url 'firma:descargar' solicitud.pk %}" class="btn btn-primary" target="_blank">
+  Ver documento firmado
+</a>
+
+{% elif solicitud.estado == "fallida" %}
+<div class="alert alert-danger">
+  <strong>La firma fue rechazada.</strong>
+  <div class="small mt-1">{{ solicitud.error }}</div>
+</div>
+
+{% elif proveedor.codigo == "local" %}
+<div class="card" style="max-width:720px">
+  <div class="card-body">
+    <p class="small text-muted">
+      Descargue el documento y fírmelo en su computador con su certificado.
+      <strong>Ni su clave privada ni su contraseña salen de su equipo</strong>:
+      SIBU no interviene en la firma.
+    </p>
+
+    <a href="{% url 'firma:descargar_original' solicitud.pk %}"
+       class="btn btn-primary btn-lg" target="_blank">
+      <i class="bi bi-download"></i> Descargar el documento
+    </a>
+
+    <hr class="my-4">
+
+    <h6>¿Ya lo firmó?</h6>
+    <p class="small text-muted">
+      Puede subirlo para que quede asentado en el expediente, o quedárselo en su
+      equipo. Es opcional.
+    </p>
+    <form method="post" action="{% url 'firma:subir_firmado' solicitud.pk %}"
+          enctype="multipart/form-data" class="row g-2 align-items-center">
+      {% csrf_token %}
+      <div class="col-auto">
+        <input type="file" name="documento" accept="application/pdf"
+               class="form-control form-control-sm" required>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-primary btn-sm">Subir documento firmado</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% elif not firma_disponible %}
+<div class="alert alert-secondary">
+  <strong>Firma no disponible.</strong>
+  <div class="small mt-1">{{ motivo }}</div>
+</div>
+<a href="{% url 'firma:descargar_original' solicitud.pk %}" class="btn btn-outline-secondary" target="_blank">
+  Descargar el documento sin firmar
+</a>
+
+{% else %}
+<div class="card" style="max-width:720px">
+  <div class="card-body">
+    <p class="small text-muted">
+      Firmador: <strong>{{ proveedor.nombre }}</strong>. Al firmar, se abrirá en
+      su computador y allí seleccionará su certificado <code>.p12</code> e
+      ingresará su contraseña.
+      <strong>Ni la contraseña ni su clave privada salen de su equipo</strong>:
+      SIBU nunca las recibe ni las almacena.
+    </p>
+
+    {% if not inicio %}
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-primary btn-lg">
+        <i class="bi bi-pen"></i> Firmar electrónicamente
+      </button>
+      <div class="form-text">Requiere tener FirmaEC instalado.</div>
+    </form>
+    {% else %}
+    <div class="alert alert-info py-2 small">
+      Solicitud generada. Tiene <strong>{{ inicio.vigencia_min }} minutos</strong>
+      para completar la firma.
+    </div>
+    <a href="{{ inicio.enlace }}" class="btn btn-success btn-lg" id="abrir-firmador">
+      <i class="bi bi-pen"></i> Abrir {{ proveedor.nombre }} y firmar
+    </a>
+    <div class="mt-3" id="espera">
+      <div class="d-flex align-items-center text-muted small">
+        <div class="spinner-border spinner-border-sm me-2"></div>
+        Esperando a que FirmaEC devuelva el documento firmado…
+      </div>
+    </div>
+    {% if inicio.ayuda %}
+    <div class="mt-3 small text-muted">{{ inicio.ayuda }}</div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<p class="mt-3">
+  <a href="{% url 'expediente:detalle' solicitud.atencion.expediente_id %}"
+     class="text-muted small">Volver al expediente</a>
+</p>
+
+{% if inicio %}
+<script>
+// FirmaEC firma fuera del navegador y devuelve el PDF al servidor, no a esta
+// pestaña: no hay evento que escuchar. Se consulta el estado hasta que llegue.
+(function () {
+  var url = "{% url 'firma:estado' solicitud.pk %}";
+  var intentos = 0;
+  var timer = setInterval(function () {
+    intentos++;
+    if (intentos > 60) { clearInterval(timer); return; }   // ~5 min
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && (d.firmada || d.estado === "fallida")) {
+          clearInterval(timer);
+          window.location.reload();
+        }
+      })
+      .catch(function () { /* reintenta en el siguiente ciclo */ });
+  }, 5000);
+})();
+</script>
+{% endif %}
+{% endblock %}

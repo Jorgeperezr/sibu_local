@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Psicopedagogía — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera"><h1 class="h4 sibu-titulo mb-0">Psicopedagogía</h1>
+  {% include "_exportar_servicio.html" with codigo="psicopedagogia" %}
+</div>
+{% if fichas %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light"><tr><th>Estudiante</th><th>Motivo</th><th>Seguimientos</th><th></th></tr></thead>
+    <tbody>
+      {% for f in fichas %}
+      <tr>
+        <td>{{ f.atencion.expediente.persona.nombre_completo }}</td>
+        <td class="small text-muted">{{ f.motivo|truncatechars:60 }}</td>
+        <td>{{ f.seguimientos.count }}</td>
+        <td class="text-end"><a href="{% url 'psicopedagogia:ficha' f.pk %}" class="btn btn-sm btn-primary">Abrir</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="text-muted">No hay fichas registradas.</p>{% endif %}
+{% endblock %}

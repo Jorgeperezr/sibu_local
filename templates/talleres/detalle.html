@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ t.codigo }} — SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">{{ t.tema }}</h1>
+<p class="text-muted">
+  <code>{{ t.codigo }}</code> · {{ t.servicio.nombre }} · {{ t.fecha|date:"d/m/Y" }} ·
+  <span class="badge bg-light text-dark border">{{ t.get_estado_display }}</span>
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Registrar participante</div>
+      <div class="card-body">
+        <form method="post" class="row g-2 align-items-end">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="participante">
+          <div class="col-7">
+            <label class="form-label small">Cédula</label>
+            <input name="cedula" class="form-control form-control-sm" maxlength="10" required>
+          </div>
+          <div class="col-3 form-check ms-2">
+            <input type="checkbox" name="asistio" class="form-check-input" id="as" checked>
+            <label class="form-check-label small" for="as">Asistió</label>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-sm btn-primary mt-2"
+                    {% if t.estado == "cerrado" %}disabled{% endif %}>Registrar</button>
+          </div>
+        </form>
+        <div class="form-text mt-2">
+          Registrar a alguien en un taller <strong>no le abre una historia clínica</strong>:
+          un taller no es una atención.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Evidencias — {{ almacen.nombre }}</div>
+      <div class="card-body">
+        {% if not almacen_disponible %}
+        <div class="alert alert-secondary py-2 small mb-2">{{ motivo_almacen }}</div>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="evidencia">
+          <input type="file" name="archivo" class="form-control form-control-sm mb-2" required>
+          <button class="btn btn-sm btn-outline-primary"
+                  {% if not almacen_disponible or t.estado == "planificado" or t.estado == "cerrado" %}disabled{% endif %}>
+            Archivar evidencia
+          </button>
+          {% if t.estado == "planificado" %}
+          <div class="form-text">Marque el taller como ejecutado primero.</div>
+          {% endif %}
+        </form>
+        {% if evidencias %}
+        <ul class="list-group list-group-flush mt-3 small">
+          {% for e in evidencias %}
+          <li class="list-group-item px-0 d-flex justify-content-between">
+            <span>{{ e.nombre_archivo }}</span>
+            <span class="text-muted">{{ e.tamano|filesizeformat }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Participantes ({{ participantes.count }})</div>
+      <div class="card-body p-0">
+        {% if participantes %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Cédula / Nombre</th><th>Validado</th><th>Asistió</th></tr></thead>
+            <tbody>
+              {% for p in participantes %}
+              <tr>
+                <td class="small">
+                  {% if p.expediente %}{{ p.expediente.persona.nombre_completo }}
+                  {% else %}{{ p.cedula_digitada }}{% endif %}
+                </td>
+                <td>
+                  {% if p.validado %}<span class="badge bg-success-subtle text-success-emphasis">Sí</span>
+                  {% else %}<span class="badge bg-light text-dark border" title="Externo a la institución">Externo</span>{% endif %}
+                </td>
+                <td>{% if p.asistio %}✓{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}<p class="text-muted small p-3 mb-0">Sin participantes.</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Estado</div>
+      <div class="card-body d-flex gap-2">
+        <form method="post">
+          {% csrf_token %}
+          <button name="accion" value="ejecutar" class="btn btn-sm btn-success"
+                  {% if t.estado != "planificado" %}disabled{% endif %}>Marcar ejecutado</button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <button name="accion" value="cerrar" class="btn btn-sm btn-outline-secondary"
+                  {% if t.estado == "planificado" or t.estado == "cerrado" %}disabled{% endif %}>Cerrar taller</button>
+        </form>
+      </div>
+      <div class="card-footer small text-muted">
+        Ejecutar exige participantes registrados. Cerrar exige al menos una evidencia.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

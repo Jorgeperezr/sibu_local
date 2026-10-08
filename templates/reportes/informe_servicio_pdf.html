@@ -1,0 +1,104 @@
+{% extends "documentos/base_pdf.html" %}
+{% load textos %}
+
+{% block titulo_doc %}Informe estadístico{% endblock %}
+{% block titulo %}Informe estadístico — {{ datos.servicio.nombre }}{% endblock %}
+{% block subtitulo %}
+  {% if datos.desde or datos.hasta %}
+    Periodo: {{ datos.desde|date:"d/m/Y"|default:"inicio" }} — {{ datos.hasta|date:"d/m/Y"|default:"a la fecha" }}
+  {% else %}
+    Acumulado histórico
+  {% endif %}
+{% endblock %}
+
+{% block contenido %}
+
+{% comment %}
+Este informe lo genera un profesional sobre su PROPIO servicio: no hay
+supresión K_MÍNIMO porque no es un agregado cruzando servicios para la
+Dirección, es el mismo contenido que ese profesional ya ve atención por
+atención, solo que sumado.
+
+Las tablas se recorren, no se escriben una a una: el profesional elige qué
+variables entran, y una lista fija aquí publicaría tablas que él quitó o
+callaría las que añadió.
+{% endcomment %}
+
+<table class="ficha">
+  <tr><th>Atenciones</th><td>{{ datos.total_atenciones }}</td></tr>
+  <tr><th>Personas atendidas</th><td>{{ datos.total_pacientes }}</td></tr>
+</table>
+<p class="nota">
+  Las dos cifras no son la misma pregunta: una persona atendida tres veces en
+  el rango suma tres atenciones pero es una sola persona atendida. Los
+  porcentajes de las tablas siguientes son sobre el total de ATENCIONES.
+</p>
+
+{% for seccion in datos.categorias %}
+<h2>{{ seccion.etiqueta }}</h2>
+<table>
+  <thead><tr><th>Categoría</th><th class="num">Atenciones</th><th class="num">%</th></tr></thead>
+  <tbody>
+    {% for f in seccion.filas %}
+    <tr><td>{{ f.etiqueta }}</td><td class="num">{{ f.total }}</td><td class="num">{{ f.porcentaje }}%</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endfor %}
+
+{% if datos.banderas %}
+<h2>Otras condiciones</h2>
+<table>
+  <thead><tr><th>Condición</th><th class="num">Atenciones con la alerta activa</th><th class="num">%</th></tr></thead>
+  <tbody>
+    {% for s in datos.banderas %}
+    <tr><td>{{ s.etiqueta }}</td><td class="num">{{ s.total }}</td><td class="num">{{ s.porcentaje }}%</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if not datos.categorias and not datos.banderas %}
+<p class="nota">
+  Este informe se generó solo con los totales: no se incluyó ninguna variable.
+</p>
+{% endif %}
+
+<div class="nota">
+  Las variables de categoría —estamento, sexo, género, identidad u orientación
+  sexual, discapacidad— se cuentan por el valor declarado. Embarazo, lactancia,
+  enfermedad catastrófica y necesidad educativa especial no son categorías sino
+  banderas clínicas: se cuenta cuántas atenciones del periodo correspondían a un
+  expediente con esa alerta activa al generar el informe, no en el momento
+  exacto de cada atención. Todos los porcentajes son sobre el total de
+  atenciones, no sobre personas atendidas.
+</div>
+
+{% if anexos.aviso %}
+<div class="nota">{{ anexos.aviso }}</div>
+{% endif %}
+
+{% if anexos.nomina %}
+<h2>Anexo · Nómina de personas atendidas</h2>
+<p class="nota">
+  {{ anexos.nomina.total }} {{ anexos.nomina.total|plural:"persona atendida,personas atendidas" }} en el periodo.
+  Una fila por persona: quien fue atendido varias veces aparece una sola vez, y
+  la columna «Atenciones» conserva cuántas suma.
+</p>
+{% include "reportes/_tabla_anexo_pdf.html" with anexo=anexos.nomina %}
+{% endif %}
+
+{% if anexos.evidencias %}
+<h2>Anexo · Evidencia de los valores reportados</h2>
+<p class="nota">
+  Cada bloque son las personas que componen una cifra del informe. La suma de la
+  columna «Atenciones» de un bloque es exactamente el valor reportado arriba.
+</p>
+{% for grupo in anexos.evidencias %}
+<h3>{{ grupo.etiqueta_variable }}: {{ grupo.valor }}
+  — {{ grupo.personas }} {{ grupo.personas|plural:"persona,personas" }}, {{ grupo.atenciones }} {{ grupo.atenciones|plural:"atención,atenciones" }}</h3>
+{% include "reportes/_tabla_anexo_pdf.html" with anexo=grupo %}
+{% endfor %}
+{% endif %}
+
+{% endblock %}

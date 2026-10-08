@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load textos %}
+{% block title %}Mi horario · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Mi horario</h1>
+    <small class="text-muted d-block">
+      Los días que atiende, sus horas y cuánto dura cada consulta.
+    </small>
+  </div>
+  <a href="{% url 'citas:calendario' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-calendar3"></i> Ver el calendario
+  </a>
+</div>
+
+{% comment %}
+De aquí sale TODO el agendamiento: los turnos que ve ventanilla salen de estas
+franjas, y la duración de la consulta es la que se graba en cada cita. Por eso
+la pantalla dice qué produce cada franja en vez de limitarse a listar campos.
+{% endcomment %}
+
+{% if fuera %}
+<div class="alert alert-warning">
+  <strong>{{ fuera|length }} cita{{ fuera|length|pluralize:"s" }}
+  {{ fuera|length|plural:"queda,quedan" }} fuera de su horario actual.</strong>
+  Cambiar el horario no cancela a nadie: esas horas siguen en pie y el paciente
+  se presentará. Decida usted si las reprograma.
+  <ul class="mb-0 mt-2 small">
+    {% for c in fuera %}
+    <li>
+      {{ c.fecha_hora|date:"l d/m/Y H:i" }} —
+      {{ c.expediente.persona.nombre_completo }} ({{ c.servicio.nombre }})
+      <a href="{% url 'citas:mi_agenda' %}?fecha={{ c.fecha_hora|date:'Y-m-d' }}">ver ese día</a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if not servicios %}
+<div class="alert alert-secondary">
+  Su perfil no tiene ningún servicio asignado, así que todavía no hay dónde
+  poner un horario. Lo asigna la Coordinación de su sección.
+</div>
+{% else %}
+
+<div class="card mb-3">
+  <div class="card-header">Añadir una franja</div>
+  <div class="card-body">
+    <form method="post" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <div class="col-md-3">
+        <label class="form-label small mb-1" for="f-servicio">Servicio</label>
+        <select name="servicio" id="f-servicio" class="form-select form-select-sm" required>
+          {% for s in servicios %}
+          <option value="{{ s.id }}">{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1" for="f-dia">Día</label>
+        <select name="dia_semana" id="f-dia" class="form-select form-select-sm" required>
+          {% for valor, etiqueta in dias %}
+          <option value="{{ valor }}">{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-1" for="f-inicio">Desde</label>
+        <input type="time" name="hora_inicio" id="f-inicio" value="08:00"
+               class="form-control form-control-sm" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-1" for="f-fin">Hasta</label>
+        <input type="time" name="hora_fin" id="f-fin" value="12:00"
+               class="form-control form-control-sm" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-1" for="f-duracion">Consulta (min)</label>
+        <input type="number" name="duracion" id="f-duracion" value="20"
+               min="{{ duracion_minima }}" max="{{ duracion_maxima }}"
+               class="form-control form-control-sm" required>
+      </div>
+      <div class="col-6 col-md-1 d-grid">
+        <button class="btn btn-sm btn-primary">Añadir</button>
+      </div>
+      <div class="col-12">
+        <div class="form-text">
+          La duración es la que se grabará en cada cita de esa franja, y la que
+          separa un turno del siguiente. Entre
+          {{ duracion_minima }} y {{ duracion_maxima }} minutos.
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Mis franjas</div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Día</th><th>Horario</th><th>Consulta</th><th>Turnos</th>
+          <th>Servicio</th><th>Vigencia</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in franjas %}
+        <tr class="{% if not f.activa %}text-muted{% endif %}">
+          <td>{{ f.get_dia_semana_display }}</td>
+          <td class="text-nowrap">{{ f.hora_inicio|time:"H:i" }}–{{ f.hora_fin|time:"H:i" }}</td>
+          <td>{{ f.duracion_turno_min }} min</td>
+          {% comment %}
+          Cuántos pacientes caben. Es el número que de verdad se quiere saber al
+          cambiar la duración, y no se puede calcular de cabeza.
+          {% endcomment %}
+          <td>{{ f.turnos_por_dia }}</td>
+          <td class="small">{{ f.servicio.nombre }}</td>
+          <td class="small text-muted">
+            desde {{ f.vigente_desde|date:"d/m/Y" }}
+            {% if f.vigente_hasta %} hasta {{ f.vigente_hasta|date:"d/m/Y" }}{% endif %}
+          </td>
+          <td class="text-end">
+            {% if f.activa %}
+            <form method="post" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="retirar">
+              <input type="hidden" name="franja" value="{{ f.id }}">
+              <button class="btn btn-sm btn-outline-secondary"
+                      title="Deja de ofrecer turnos en esta franja">Retirar</button>
+            </form>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary-emphasis border">Retirada</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            Todavía no tiene horario, así que <strong>no se le puede reservar
+            ninguna cita</strong>. Añada arriba el primer día que atiende.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

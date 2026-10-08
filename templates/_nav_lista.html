@@ -1,0 +1,14 @@
+{% comment %}
+Los enlaces de la navegación, en un solo sitio: los usan la barra lateral de
+escritorio y el panel deslizante de móvil. Duplicarlos habría sido la vía
+rápida para que un día dejaran de coincidir.
+{% endcomment %}
+{% for grupo, modulos in nav_grupos %}
+<div class="sibu-grupo">
+  <span class="sibu-grupo-titulo">{{ grupo }}</span>
+  {% for m in modulos %}
+  <a class="sibu-enlace{% if request.resolver_match.view_name == m.url_name %} activo{% endif %}"
+     href="{% url m.url_name %}">{{ m.etiqueta }}</a>
+  {% endfor %}
+</div>
+{% endfor %}

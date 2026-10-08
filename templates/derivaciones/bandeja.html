@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Derivaciones — SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3"><h1 class="h4 sibu-titulo mb-0">Derivaciones — {{ servicio.nombre }}</h1>
+  {% if servicios.count > 1 %}
+  <form method="get">
+    <select name="servicio" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for s in servicios %}
+      <option value="{{ s.pk }}" {% if s.pk == servicio.pk %}selected{% endif %}>{{ s.nombre }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+
+<h5 class="mt-3">Recibidas ({{ entrantes|length }})</h5>
+{% if entrantes %}
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+  <thead class="table-light">
+    <tr><th>Paciente</th><th>Desde</th><th>Motivo</th><th>Estado</th><th class="text-end">Acciones</th></tr>
+  </thead>
+  <tbody>
+    {% for d in entrantes %}
+    <tr {% if d.prioridad == "urgente" %}class="table-warning"{% endif %}>
+      <td>
+        {{ d.atencion_origen.expediente.persona.nombre_completo }}
+        {% if d.prioridad == "urgente" %}<span class="badge bg-danger ms-1">Urgente</span>{% endif %}
+      </td>
+      <td class="small">{{ d.atencion_origen.servicio.nombre }}</td>
+      <td class="small text-muted">{{ d.motivo|truncatechars:50 }}</td>
+      <td><span class="badge bg-secondary">{{ d.get_estado_display }}</span></td>
+      <td class="text-end">
+        <form method="post" action="{% url 'derivaciones:gestionar' d.pk %}" class="d-inline">
+          {% csrf_token %}
+          {% if d.estado == "enviada" %}
+            <button name="accion" value="aceptar" class="btn btn-sm btn-success">Aceptar</button>
+            <button name="accion" value="rechazar" class="btn btn-sm btn-outline-danger"
+                    onclick="this.form.motivo.value=prompt('Motivo del rechazo:')||''">Rechazar</button>
+            <input type="hidden" name="motivo">
+          {% elif d.estado == "aceptada" %}
+            <button name="accion" value="agendar" class="btn btn-sm btn-outline-primary">Agendar</button>
+          {% elif d.estado == "agendada" %}
+            <span class="text-muted small">Atender desde la consulta</span>
+          {% endif %}
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="text-muted">Sin derivaciones pendientes.</p>
+{% endif %}
+
+<h5 class="mt-4">Emitidas por {{ servicio.nombre }}</h5>
+{% if emitidas %}
+<div class="table-responsive">
+<table class="table table-sm align-middle">
+  <thead class="table-light">
+    <tr><th>Paciente</th><th>Hacia</th><th>Estado</th><th>Retorno</th></tr>
+  </thead>
+  <tbody>
+    {% for d in emitidas %}
+    <tr>
+      <td class="small">{{ d.atencion_origen.expediente.persona.nombre_completo }}</td>
+      <td class="small">
+        {{ d.servicio_destino.nombre }}
+        {% if d.servicio_destino.codigo in confidenciales %}
+        <i class="bi bi-shield-lock text-muted" title="Servicio confidencial"></i>
+        {% endif %}
+      </td>
+      <td><span class="badge bg-light text-dark border">{{ d.get_estado_display }}</span></td>
+      <td class="small text-muted">{{ d.retorno_texto|default:"—"|truncatechars:80 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="text-muted small">Ninguna.</p>
+{% endif %}
+{% endblock %}

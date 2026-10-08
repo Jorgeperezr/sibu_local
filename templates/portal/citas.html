@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Mis citas — Portal SIBU{% endblock %}
+{% block content %}
+<h1 class="h4 sibu-titulo">Mis citas</h1>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Agendar una cita</div>
+      <div class="card-body">
+        <form method="get" class="mb-3">
+          <label class="form-label small">Servicio</label>
+          <select name="servicio" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">—</option>
+            {% for s in servicios %}
+            <option value="{{ s.pk }}" {% if servicio_sel and s.pk == servicio_sel.pk %}selected{% endif %}>{{ s.nombre }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% if servicio_sel %}
+          {% if turnos %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="servicio" value="{{ servicio_sel.pk }}">
+            <label class="form-label small">Turnos disponibles (próximos 14 días)</label>
+            <div class="list-group small mb-2" style="max-height:300px;overflow:auto">
+              {% for t in turnos %}
+              <label class="list-group-item d-flex gap-2">
+                <input type="radio" name="turno" value="{{ t.turno|date:'c' }}" required
+                       onclick="document.getElementById('prof').value='{{ t.profesional.pk }}'">
+                {{ t.turno|date:"D d/m H:i" }} · {{ t.profesional.usuario.get_full_name|default:"Profesional" }}
+              </label>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="profesional" id="prof">
+            <button class="btn btn-sm btn-primary">Reservar</button>
+          </form>
+          {% else %}
+          <p class="text-muted small">No hay turnos disponibles en los próximos 14 días.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Historial</div>
+      <div class="card-body p-0">
+        {% if citas %}
+        <ul class="list-group list-group-flush small">
+          {% for c in citas %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ c.servicio.nombre }} · {{ c.fecha_hora|date:"d/m/Y H:i" }}
+              <span class="badge bg-light text-dark border">{{ c.get_estado_display }}</span>
+            </span>
+            {% if c.estado == "reservada" or c.estado == "confirmada" %}
+            <form method="post" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="cancelar">
+              <input type="hidden" name="cita_id" value="{{ c.pk }}">
+              <button class="btn btn-sm btn-outline-danger">Cancelar</button>
+            </form>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="text-muted small p-3 mb-0">Sin citas.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

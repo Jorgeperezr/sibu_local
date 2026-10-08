@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ receta.numero }} · Farmacia{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">{{ receta.numero }}</h1>
+    <small class="text-muted">
+      {{ persona.nombre_completo }} · {{ persona.cedula }} ·
+      <span class="badge bg-info text-dark">{{ receta.get_estado_display }}</span>
+      · Vence {{ receta.valida_hasta|date:"d/m/Y H:i" }}
+    </small>
+  </div>
+  <a href="{% url 'farmacia:mostrador' %}" class="btn btn-sm btn-outline-secondary">Mostrador</a>
+</div>
+
+<div class="card mb-3">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Medicamento</th><th>Prescrito</th><th>Pendiente</th>
+          <th>Stock</th><th>Próximos lotes (FEFO)</th><th>Despachar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in items %}
+        <tr>
+          <td>
+            <strong>{{ i.detalle.medicamento }}</strong>
+            <br><small class="text-muted">
+              {{ i.detalle.dosis }} · {{ i.detalle.frecuencia }} · {{ i.detalle.duracion }}
+            </small>
+          </td>
+          <td>{{ i.detalle.cantidad_prescrita }}</td>
+          <td>
+            {% if i.pendiente %}
+              <span class="badge bg-warning text-dark">{{ i.pendiente }}</span>
+            {% else %}
+              <span class="badge bg-success">Completo</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if i.stock < i.pendiente %}
+              <span class="text-danger fw-bold">{{ i.stock }}</span>
+            {% else %}
+              {{ i.stock }}
+            {% endif %}
+          </td>
+          <td>
+            {% for lote in i.lotes_fefo %}
+              <div class="small">
+                {{ lote.numero_lote }} — {{ lote.cantidad_actual }} u.
+                <span class="text-muted">(cad. {{ lote.fecha_caducidad|date:"d/m/Y" }})</span>
+              </div>
+            {% empty %}
+              <span class="small text-danger">Sin lotes disponibles</span>
+            {% endfor %}
+          </td>
+          <td>
+            {% if i.pendiente and receta.estado != 'anulada' %}
+            <form method="post" class="d-flex gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="despachar_item">
+              <input type="hidden" name="detalle" value="{{ i.detalle.id }}">
+              <input type="number" name="cantidad" class="form-control form-control-sm"
+                     style="width:80px" value="{{ i.pendiente }}" min="1" max="{{ i.pendiente }}">
+              <button class="btn btn-sm btn-primary">Entregar</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% if i.detalle.dispensaciones.all %}
+        <tr class="table-light">
+          <td colspan="6" class="small">
+            <strong>Entregado:</strong>
+            {% for d in i.detalle.dispensaciones.all %}
+              lote {{ d.lote.numero_lote }} × {{ d.cantidad_despachada }}
+              ({{ d.fecha_hora|date:"d/m/Y H:i" }}){% if not forloop.last %} · {% endif %}
+            {% endfor %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="d-flex gap-2">
+  {% if receta.estado == Estado.EMITIDA or receta.estado == Estado.PARCIAL %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="despachar_todo">
+    <button class="btn btn-success">Despachar todo lo disponible</button>
+  </form>
+  {% endif %}
+
+  {% if receta.estado == Estado.EMITIDA %}
+  <form method="post" class="d-flex gap-1">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="anular">
+    <input name="motivo" class="form-control form-control-sm" placeholder="Motivo de anulación">
+    <button class="btn btn-sm btn-outline-danger">Anular</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

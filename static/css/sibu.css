@@ -1,0 +1,552 @@
+/*
+ * SIBU — identidad visual de la Universidad Nacional de Loja.
+ *
+ * Los colores, la tipografía y el logotipo salen del Manual Corporativo de la
+ * UNL (Manual de Identidad, secciones "Logos Primarios", "Tipografía" y
+ * "Colores Corporativos"). Antes había un verde inventado como marcador de
+ * posición; ya no hace falta.
+ *
+ * Se estilan las clases de Bootstrap que las plantillas ya usan (.card, .table,
+ * .btn, .badge…) para que el cambio alcance a las 38 plantillas a la vez, sin
+ * tocar el marcado de cada módulo.
+ */
+
+:root {
+  /* --- Colores corporativos, tal como los declara el manual --------------
+     Rojo   Pantone 485 C    RGB 191-8-17    #BF0811
+     Verde  Pantone 355 C    RGB 79-142-58   #4F8E3A
+     Negro  Pantone Black C  RGB 33-25-21    #211915
+     Azul   Pantone 111-8 C  RGB 0-76-123    #004C7B
+     Oliva  Pantone 155-15 C RGB 95-136-61   #5F883D
+     (En el oliva, el HEX impreso en el manual —648F39— no cuadra con su
+     propio RGB; se toma el RGB, que es el dato coherente con los demás.) */
+  --unl-rojo: #bf0811;
+  --unl-rojo-oscuro: #8f060d;
+  --unl-verde: #4f8e3a;
+  --unl-verde-oscuro: #3c6d2c;
+  --unl-negro: #211915;
+  --unl-azul: #004c7b;
+  --unl-oliva: #5f883d;
+
+  /* --- Papeles del sistema ---------------------------------------------
+     El verde lleva las acciones: en un sistema de salud el rojo significa
+     alerta, y usarlo en los botones de guardar competiría con los avisos
+     reales. El rojo queda para la marca y para lo que de verdad es grave,
+     que es como lo usa el propio manual en sus bandas de título. */
+  --sibu-primary: var(--unl-verde);
+  --sibu-primary-dark: var(--unl-verde-oscuro);
+  --sibu-accent: var(--unl-rojo);
+  --sibu-text: var(--unl-negro);
+  --sibu-bg: #f5f6f4;
+  --sibu-muted: #6b6560;
+  --sibu-border: #e3e1dd;
+  /* Ámbar, no un color del manual: la confidencialidad de Psicología tiene que
+     leerse como advertencia y no confundirse ni con la marca ni con un error. */
+  --sibu-confidencial: #b45309;
+
+  --sibu-side-w: 246px;
+  --sibu-side-bg: #ffffff;
+}
+
+body {
+  background: var(--sibu-bg);
+  color: var(--sibu-text);
+  font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-size: 0.94rem;
+}
+
+/* ==========================================================================
+   Armazón: barra lateral fija + contenido
+   ==========================================================================
+   Trece módulos no caben legibles en una barra horizontal. La lateral los
+   agrupa por sección y crece hacia abajo; añadir un módulo no estrecha a los
+   demás. Va en blanco para que el logotipo aparezca en sus colores
+   corporativos, que es lo que el manual pide siempre que sea posible.
+   ------------------------------------------------------------------------ */
+.sibu-shell {
+  display: flex;
+  min-height: 100vh;
+}
+.sibu-side {
+  width: var(--sibu-side-w);
+  flex: 0 0 var(--sibu-side-w);
+  background: var(--sibu-side-bg);
+  border-right: 1px solid var(--sibu-border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sibu-main {
+  flex: 1 1 auto;
+  min-width: 0; /* sin esto una tabla ancha desborda el flex en vez de scrollar */
+  display: flex;
+  flex-direction: column;
+}
+.sibu-contenido {
+  flex: 1 0 auto;
+  padding: 1.75rem 2rem;
+  max-width: 1240px;
+  width: 100%;
+}
+
+/* ---- Marca: el logotipo oficial, sin recomponer ---- */
+.sibu-marca {
+  display: block;
+  text-decoration: none; /* es un enlace, pero el subrayado partía el logotipo */
+  padding: 1.1rem 1.15rem 0.9rem;
+  border-bottom: 1px solid var(--sibu-border);
+  /* Filo rojo superior: el manual usa el rojo como banda de encabezado. */
+  border-top: 3px solid var(--unl-rojo);
+}
+.sibu-marca img {
+  width: 100%;
+  max-width: 178px;
+  height: auto;
+  display: block;
+}
+
+/* ---- Enlaces agrupados ---- */
+.sibu-nav {
+  padding: 0.9rem 0.7rem;
+}
+.sibu-grupo + .sibu-grupo {
+  margin-top: 1.15rem;
+}
+.sibu-grupo-titulo {
+  display: block;
+  padding: 0 0.6rem 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--sibu-muted);
+}
+.sibu-enlace {
+  display: block;
+  padding: 0.42rem 0.6rem;
+  border-radius: 0.35rem;
+  color: var(--sibu-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  border-left: 3px solid transparent;
+}
+.sibu-enlace:hover {
+  background: #f0f2ee;
+  color: var(--unl-verde-oscuro);
+}
+.sibu-enlace.activo {
+  background: #eef4ea;
+  border-left-color: var(--unl-verde);
+  color: var(--unl-verde-oscuro);
+  font-weight: 600;
+}
+
+/* ---- Usuario, al pie de la lateral ---- */
+.sibu-usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--sibu-border);
+  font-size: 0.83rem;
+}
+.sibu-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  background: var(--unl-verde);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.sibu-usuario-datos {
+  min-width: 0;
+  flex: 1 1 auto;
+  /* Es un enlace a la ficha propia: sin el reset heredaría el azul y el
+     subrayado de Bootstrap, que es lo que ya afeó el logotipo una vez. */
+  color: inherit;
+  text-decoration: none;
+}
+.sibu-usuario-datos:hover span {
+  color: var(--unl-verde);
+}
+.sibu-usuario-datos span {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sibu-usuario-datos small {
+  color: var(--sibu-muted);
+  font-size: 0.71rem;
+}
+/* Cerrar sesión es un botón dentro de un formulario POST —Django 5 retiró el
+   GET de `LogoutView`—, así que se le quita el aspecto de botón para que siga
+   viéndose como el icono que era. */
+.sibu-salir {
+  color: var(--sibu-muted);
+  font-size: 1.1rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
+}
+.sibu-salir:hover {
+  color: var(--unl-rojo);
+}
+.sibu-salir-form {
+  display: inline;
+  margin: 0;
+}
+
+/* ---- Cabecera solo para pantallas pequeñas ---- */
+.sibu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid var(--sibu-border);
+  border-top: 3px solid var(--unl-rojo);
+}
+.sibu-top img {
+  height: 30px;
+  width: auto;
+}
+.sibu-side-movil {
+  background: #fff;
+}
+
+@media (max-width: 991.98px) {
+  .sibu-contenido {
+    padding: 1.25rem 1rem;
+  }
+}
+
+/* Sin sesión: sin lateral, el contenido centrado y estrecho. */
+.sibu-shell-publico .sibu-contenido {
+  max-width: 460px;
+  margin: 0 auto;
+  padding-top: 2.5rem;
+}
+
+/* ==========================================================================
+   Componentes de Bootstrap, teñidos con la paleta institucional
+   ========================================================================== */
+.btn-primary {
+  --bs-btn-bg: var(--sibu-primary);
+  --bs-btn-border-color: var(--sibu-primary);
+  --bs-btn-hover-bg: var(--sibu-primary-dark);
+  --bs-btn-hover-border-color: var(--sibu-primary-dark);
+  --bs-btn-active-bg: var(--sibu-primary-dark);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--sibu-primary-dark);
+  --bs-btn-border-color: var(--sibu-primary);
+  --bs-btn-hover-bg: var(--sibu-primary);
+  --bs-btn-hover-border-color: var(--sibu-primary);
+}
+.btn-danger {
+  --bs-btn-bg: var(--unl-rojo);
+  --bs-btn-border-color: var(--unl-rojo);
+  --bs-btn-hover-bg: var(--unl-rojo-oscuro);
+  --bs-btn-hover-border-color: var(--unl-rojo-oscuro);
+}
+.btn {
+  font-weight: 500;
+}
+a {
+  color: var(--unl-verde-oscuro);
+}
+a:hover {
+  color: var(--unl-verde);
+}
+.text-primary {
+  color: var(--sibu-primary) !important;
+}
+.alert-danger {
+  --bs-alert-color: var(--unl-rojo-oscuro);
+  --bs-alert-border-color: #f0c4c6;
+  --bs-alert-bg: #fdf0f0;
+}
+.alert-info {
+  --bs-alert-color: var(--unl-azul);
+  --bs-alert-border-color: #c3d8e5;
+  --bs-alert-bg: #eff5f9;
+}
+
+/* ---- Tarjetas ---- */
+.card {
+  border: 1px solid var(--sibu-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgba(33, 25, 21, 0.04);
+}
+.card-header {
+  background: #fff;
+  border-bottom: 1px solid var(--sibu-border);
+  font-weight: 600;
+  color: var(--sibu-text);
+}
+
+/* ---- Tablas ---- */
+.table > thead th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sibu-muted);
+  background: #f7f8f6;
+  border-bottom: 1px solid var(--sibu-border);
+}
+
+/* ---- Encabezado de página: filo rojo, como las bandas del manual ----
+   Se aplica por CLASE, no por posición en el DOM. Antes eran tres selectores
+   posicionales —`> h1:first-child`, `h1.h4`, `> h2:first-of-type`— y eso daba
+   filete donde no tocaba y ninguno donde sí: el «GENERAL» de la portada, que
+   es el primer h2 de la página, lo llevaba; el título de Psicología, metido
+   dentro de un div para acompañarlo de una insignia, no lo llevaba. Con una
+   clase explícita el resultado no depende de dónde caiga el elemento. */
+.sibu-titulo {
+  font-weight: 700;
+  padding-bottom: 0.35rem;
+  border-bottom: 3px solid var(--unl-rojo);
+  /* `inline-block` para que el filete mida lo que el texto y no el ancho de la
+     columna. `max-width` porque, siendo inline-block dentro de un flex, un
+     título largo empujaba el contenedor y sacaba del viewport a lo que tuviera
+     al lado. */
+  display: inline-block;
+  max-width: 100%;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+}
+
+/* El subtítulo que acompaña al título va SIEMPRE en su propia línea. Como
+   `.sibu-titulo` es `inline-block` para que el filete mida lo que el texto, un
+   `<small>` o un `<p>` a continuación se colocaba al lado y se enredaba con el
+   filete —«Mis datos» y «Padrón institucional» lo hacían—. Se arregla aquí y no
+   plantilla por plantilla: así vale también para la siguiente que se escriba. */
+.sibu-titulo + small,
+.sibu-titulo + p,
+.sibu-titulo + span {
+  display: block;
+}
+
+/* Cabecera de página: el título a la izquierda y sus acciones a la derecha,
+   que en pantalla estrecha bajan en vez de salirse. Es el patrón que casi
+   todas las plantillas escribían a mano con `d-flex justify-content-between`,
+   sin `flex-wrap`: por eso la insignia de Psicología se salía a 375 px. */
+.sibu-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* ---- Señal de confidencialidad ---- */
+.sibu-confidencial,
+.badge.bg-confidencial {
+  background: var(--sibu-confidencial) !important;
+  color: #fff !important;
+}
+.card.sibu-sello {
+  border-left: 4px solid var(--sibu-confidencial);
+}
+
+/* ---- Pie ---- */
+.sibu-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--sibu-muted);
+  font-size: 0.78rem;
+  border-top: 1px solid var(--sibu-border);
+  padding: 1rem 2rem;
+}
+
+/* ---- Accesibilidad: foco visible para navegación por teclado ---- */
+a:focus-visible,
+.btn:focus-visible,
+.form-control:focus,
+.form-select:focus {
+  outline: 2px solid var(--unl-verde);
+  outline-offset: 1px;
+  border-color: var(--unl-verde);
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   Portada
+   ========================================================================== */
+.sibu-portada {
+  border-left: 3px solid var(--unl-rojo);
+  padding-left: 0.9rem;
+}
+.sibu-seccion {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--sibu-muted);
+  margin-bottom: 0.6rem;
+  display: block;
+}
+.sibu-tarjeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: #fff;
+  border: 1px solid var(--sibu-border);
+  border-radius: 0.45rem;
+  color: var(--sibu-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+.sibu-tarjeta i {
+  color: var(--sibu-muted);
+}
+.sibu-tarjeta:hover {
+  border-color: var(--unl-verde);
+  color: var(--unl-verde-oscuro);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 25, 21, 0.07);
+}
+.sibu-tarjeta:hover i {
+  color: var(--unl-verde);
+}
+
+/* ---- Secciones plegables de un formulario ----
+   Se usan en el alta de personas para que lo opcional no convierta once
+   casillas en más de treinta. `<details>` nativo: funciona sin JavaScript, así
+   que no puede quedarse a medio abrir si el script no carga. */
+details > summary {
+  cursor: pointer;
+  padding: 0.5rem 0.7rem;
+  background: #f7f8f6;
+  border: 1px solid var(--sibu-border);
+  border-radius: 0.35rem;
+  list-style-position: inside;
+}
+details > summary:hover {
+  border-color: var(--unl-verde);
+  color: var(--unl-verde-oscuro);
+}
+details[open] > summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ---- Cabecera de tabla que ordena ----
+   Hereda el color apagado de `.table > thead th`; la activa se destaca para
+   que se vea de un vistazo por dónde está ordenada la tabla. */
+.sibu-orden {
+  color: inherit;
+  text-decoration: none;
+}
+.sibu-orden:hover {
+  color: var(--unl-verde-oscuro);
+  text-decoration: underline;
+}
+.sibu-orden.activo {
+  color: var(--unl-verde-oscuro);
+}
+
+/* --- Calendario de citas -------------------------------------------------
+   Las celdas son enlaces de bloque: se pulsa el día entero, no el número.
+   Alto mínimo para que un mes con días vacíos no salga aplastado y otro con
+   citas no dé saltos de altura entre semanas. */
+.sibu-calendario td { width: 14.28%; }
+.sibu-calendario .sibu-dia { min-height: 4.2rem; color: inherit; }
+.sibu-calendario .sibu-dia:hover { background: var(--sibu-verde-suave, #eef6ef); }
+.sibu-calendario .sibu-dia-hoy { box-shadow: inset 0 0 0 2px var(--sibu-verde, #1f7a3f); }
+@media (max-width: 575.98px) {
+  .sibu-calendario .sibu-dia { min-height: 3rem; padding: .25rem !important; }
+  .sibu-calendario .badge { font-size: .65rem; }
+}
+
+/* --- Aviso de notificaciones ---------------------------------------------
+   Vive en el pie de la barra, junto al nombre. El pie es estrecho (la barra
+   mide 245 px), así que la campana no puede robarle ancho al nombre: los dos
+   iconos van en un bloque que no se encoge y el nombre se queda con el resto,
+   recortado con puntos suspensivos en vez de partirse en tres líneas. */
+.sibu-usuario-acciones { display: flex; align-items: center; gap: .55rem; flex: 0 0 auto; }
+.sibu-usuario-datos span,
+.sibu-usuario-datos small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sibu-avisos { position: relative; color: inherit; text-decoration: none; padding: .25rem .35rem; }
+/* Dentro de su propia caja: con el contador desbordando hacia la derecha se
+   montaba encima del icono de cerrar sesión. */
+.sibu-avisos .badge { position: absolute; top: -.15rem; right: -.1rem; font-size: .55rem; padding: .18em .38em; }
+.sibu-avisos:hover { color: var(--unl-verde); }
+
+/* ==========================================================================
+   Odontograma
+   --------------------------------------------------------------------------
+   Paleta propia, no la semántica de Bootstrap. El diente sano se pintaba con
+   `btn-success` y el obturado con `btn-primary`, y arriba en este mismo
+   archivo `primary` se tiñe con el verde de la UNL: los dos salían verdes, con
+   1,14:1 de contraste entre sí. Un obturado leído como sano cambia el plan de
+   tratamiento y el índice CPO-D que se reporta.
+
+   El color acompaña pero no decide: cada pieza lleva la inicial de su estado
+   (`apps/odontologia/presentacion.py`), como el odontograma en papel. El 8 %
+   de los hombres no distingue el rojo del verde —los dos estados más
+   frecuentes— y una impresión en blanco y negro deja el color en nada.
+   ========================================================================== */
+.odo-pieza {
+  width: 46px;
+  padding: 2px 0 1px;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: .3rem;
+  background: #fff;
+  font-size: .8rem;
+  line-height: 1.15;
+  cursor: pointer;
+}
+.odo-pieza:hover { box-shadow: 0 0 0 2px var(--sibu-primary, #4f8e3a); }
+.odo-pieza .odo-inicial {
+  display: block;
+  font-size: .7rem;
+  font-weight: 700;
+  min-height: .85rem;
+}
+
+.odo-sano      { background: #f8f9fa; color: #212121; }
+.odo-cariado   { background: #c62828; color: #fff; border-color: #8e1c1c; }
+.odo-obturado  { background: #1565c0; color: #fff; border-color: #0d47a1; }
+.odo-perdido   { background: #212121; color: #fff; border-color: #000; }
+.odo-extraido  { background: #6d4c41; color: #fff; border-color: #4e342e; }
+.odo-corona    { background: #00838f; color: #fff; border-color: #005f66; }
+.odo-sellante  { background: #f9a825; color: #212121; border-color: #c17900; }
+.odo-protesis  { background: #6a1b9a; color: #fff; border-color: #4a148c; }
+.odo-implante  { background: #ad1457; color: #fff; border-color: #7a0e3d; }
+.odo-ausente   { background: #cfd8dc; color: #37474f; border-color: #b0bec5; }
+.odo-vacio     { background: #fff; color: #90a4ae; border-style: dashed; }
+
+.odo-leyenda { display: flex; flex-wrap: wrap; gap: .35rem; }
+.odo-leyenda .odo-muestra {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .1rem .45rem;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: .3rem;
+  font-size: .75rem;
+}

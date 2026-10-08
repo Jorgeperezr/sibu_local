@@ -1,0 +1,29 @@
+{% comment %}
+La tabla de un anexo. Se comparte entre la nómina y cada bloque de evidencias
+porque son la misma tabla con distinto contenido: dos plantillas acabarían con
+dos pies distintos, y el pie es donde se dice qué columnas se retiraron.
+{% endcomment %}
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead><tr>{% for e in anexo.encabezados %}<th>{{ e }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for fila in anexo.filas %}
+      <tr>{% for celda in fila %}<td>{{ celda }}</td>{% endfor %}</tr>
+      {% empty %}
+      <tr><td colspan="{{ anexo.encabezados|length }}" class="text-muted">Sin personas en el rango.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if anexo.protegida %}
+<p class="small text-muted">
+  Identidad protegida: no se reportan cédula, teléfono, correo institucional ni
+  número de expediente. Cada fila se cita por su código.
+  {% if anexo.retiradas %}Se retiraron las columnas marcadas: {{ anexo.retiradas|join:", " }}.{% endif %}
+</p>
+{% else %}
+<p class="small text-danger">
+  Este anexo incluye datos identificativos. Custodia de la Unidad: no se difunde
+  fuera del servicio que lo generó.
+</p>
+{% endif %}

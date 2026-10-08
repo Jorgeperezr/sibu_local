@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Expediente {{ expediente.numero_expediente }} · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">{{ persona.nombre_completo }}</h1>
+    <small class="text-muted">Expediente {{ expediente.numero_expediente }} ·
+      {{ persona.cedula }} · {{ persona.get_tipo_vinculo_display }}</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'expediente:datos' expediente.pk %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-sliders"></i> Datos y ajustes
+    </a>
+    <a href="{% url 'expediente:buscar' %}" class="btn btn-sm btn-outline-secondary">Nueva búsqueda</a>
+  </div>
+</div>
+
+{% if alertas %}
+<div class="mb-3">
+  {% for a in alertas %}
+    <span class="badge bg-danger me-1" title="{{ a.get_tipo_display }}">⚠ {{ a.descripcion }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if tipos_alerta %}
+<div class="card mb-3">
+  <div class="card-header">
+    <a class="text-decoration-none text-body d-block" data-bs-toggle="collapse"
+       href="#form-alerta" role="button">
+      <i class="bi bi-flag"></i> Registrar alerta clínica
+    </a>
+  </div>
+  <div class="collapse" id="form-alerta">
+    <div class="card-body">
+      {% comment %}
+      Visible en todo el expediente por diseño del modelo: una alergia la debe
+      ver Farmacia, una NEE la debe ver Psicopedagogía. No es contenido
+      clínico narrativo —lo que protege el sello de Psicología—, es una
+      bandera, así que registrarla desde cualquier servicio no abre rendija.
+      {% endcomment %}
+      <form method="post" action="{% url 'expediente:alertas' expediente.id %}" class="row g-2">
+        {% csrf_token %}
+        <div class="col-sm-4">
+          <select name="tipo" class="form-select form-select-sm" required>
+            <option value="">Tipo de alerta</option>
+            {% for valor, etiqueta in tipos_alerta %}
+              <option value="{{ valor }}">{{ etiqueta }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-6">
+          <input name="descripcion" class="form-control form-control-sm" maxlength="255"
+                 placeholder="Descripción" required>
+        </div>
+        <div class="col-sm-2">
+          <button class="btn btn-sm btn-outline-primary w-100">Registrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if valores_efectivos %}
+<div class="card mb-3">
+  <div class="card-header">
+    <a class="text-decoration-none text-body d-block" data-bs-toggle="collapse"
+       href="#form-ajuste" role="button">
+      <i class="bi bi-pencil-square"></i>
+      Lo que {{ servicio_de_ajuste.nombre }} comprobó
+      <small class="text-muted">— frente a lo declarado en matrícula</small>
+    </a>
+  </div>
+  {% comment %}
+  Si se acaba de elegir servicio, el panel se abre: cerrarlo justo después de
+  pedirlo obligaría a volver a desplegarlo para ver lo que se pidió ver.
+  {% endcomment %}
+  <div class="collapse{% if request.GET.servicio %} show{% endif %}" id="form-ajuste">
+    <div class="card-body">
+      {% comment %}
+      El caso que lo motiva: en consulta se identifica un embarazo que la ficha
+      de matrícula no declara. El profesional decide si solo lo ve o lo anota.
+      Lo anotado vale para ESTE servicio —es él quien lo comprobó— y la base
+      institucional queda intacta: es la fuente para el resto del sistema y
+      nadie autorizó a reescribirla desde una consulta. Se puede volver atrás.
+      {% endcomment %}
+      <p class="small text-muted">
+        Anotar aquí <strong>no modifica la base institucional</strong>. Lo que
+        registre vale para {{ servicio_de_ajuste.nombre }}, que es quien lo
+        comprobó, y se puede retirar para volver a lo declarado en matrícula.
+      </p>
+      {% if servicios_de_ajuste|length > 1 %}
+      {% comment %}
+      Quien atiende en más de un servicio tiene que decir desde cuál mira y
+      anota: cada servicio ve lo que él comprobó, no lo del vecino. Es un GET
+      porque cambia la lectura de la tabla, no el dato.
+      {% endcomment %}
+      <form method="get" class="d-flex align-items-center gap-2 mb-3">
+        <label class="form-label small mb-0" for="servicio-de-ajuste">Anotar desde</label>
+        <select class="form-select form-select-sm w-auto" id="servicio-de-ajuste"
+                name="servicio" onchange="this.form.submit()">
+          {% for s in servicios_de_ajuste %}
+          <option value="{{ s.id }}" {% if s.id == servicio_de_ajuste.id %}selected{% endif %}>
+            {{ s.nombre }}
+          </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-outline-secondary">Ver</button>
+      </form>
+      {% endif %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Declarado en matrícula</th>
+              <th>Lo que consta aquí</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in valores_efectivos %}
+            <tr>
+              <td class="small">{{ v.etiqueta }}</td>
+              <td class="small text-muted">{{ v.institucional|default:"—" }}</td>
+              <td class="small">
+                {{ v.valor|default:"—" }}
+                {% if v.ajustado %}
+                  <span class="badge bg-info-subtle text-info-emphasis border">lo comprobó el servicio</span>
+                  {% if v.nota %}<div class="text-muted">{{ v.nota }}</div>{% endif %}
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <form method="post" action="{% url 'expediente:ajustar' expediente.id %}"
+                      class="d-flex gap-1 justify-content-end">
+                  {% csrf_token %}
+                  <input type="hidden" name="variable" value="{{ v.variable }}">
+                  <input type="hidden" name="servicio" value="{{ servicio_de_ajuste.id }}">
+                  <input name="valor" class="form-control form-control-sm" style="width:110px"
+                         value="{{ v.valor }}" aria-label="Valor comprobado para {{ v.etiqueta }}">
+                  <input name="nota" class="form-control form-control-sm" style="width:190px"
+                         placeholder="Por qué" maxlength="255" value="{{ v.nota }}">
+                  <button class="btn btn-sm btn-outline-primary">Anotar</button>
+                  {% if v.ajustado %}
+                  <button name="accion" value="quitar" class="btn btn-sm btn-outline-secondary"
+                          title="Volver a lo declarado en matrícula">Quitar</button>
+                  {% endif %}
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-muted mb-0">
+        No se pueden ajustar {{ no_ajustables.values|join:" ni " }}: son
+        declaraciones de la persona sobre sí misma, y que un servicio las
+        «corrigiera» sería asignarle una identidad. Se cambian donde se declaran.
+      </p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if acciones %}
+<div class="card mb-3">
+  <div class="card-header">Iniciar atención</div>
+  <div class="card-body d-flex flex-wrap gap-2">
+    {% for a in acciones %}
+    {% comment %}
+    Los botones salen del RBAC, igual que el menú: quien no puede abrir esa
+    atención tampoco ve el botón, y el que lo ve no recibe un 403 al pulsarlo.
+    {% endcomment %}
+    <a href="{% url a.url_name expediente.id %}" class="btn btn-sm btn-{{ a.variante }}">
+      {% if a.icono %}<i class="bi bi-{{ a.icono }}"></i>{% endif %} {{ a.etiqueta }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between">
+    <span>Línea de tiempo ({{ total_atenciones }} atenciones visibles)</span>
+  </div>
+  <ul class="list-group list-group-flush">
+    {% for at in atenciones %}
+      <li class="list-group-item">
+        <div class="d-flex justify-content-between">
+          <strong>{{ at.servicio.nombre }}</strong>
+          <small class="text-muted">{{ at.fecha_hora|date:"d/m/Y H:i" }}</small>
+        </div>
+        <div class="small text-muted">
+          {{ at.get_tipo_display }} · {{ at.profesional.usuario.get_full_name|default:"—" }}
+          · <span class="badge bg-secondary">{{ at.get_estado_display }}</span>
+        </div>
+        {% if at.motivo_consulta %}<div class="small">{{ at.motivo_consulta|truncatechars:120 }}</div>{% endif %}
+        {% if at.puede_derivar %}
+        {% comment %}
+        Solo desde una atención propia: es la misma regla que aplica la vista
+        de derivar. Sin este enlace había que teclear la URL a mano.
+        {% endcomment %}
+        <a href="{% url 'derivaciones:derivar' at.id %}"
+           class="btn btn-sm btn-outline-primary mt-2">
+          <i class="bi bi-arrow-right-circle"></i> Derivar a otro servicio
+        </a>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="list-group-item text-muted">No hay atenciones visibles para su rol en este expediente.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
