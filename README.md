@@ -1,167 +1,195 @@
 # SIBU portable
 
-Sistema Integral de Bienestar Universitario de la Universidad Nacional de Loja,
-en versión **portable**: corre desde una carpeta, sin instalar nada. El
-profesional pulsa un icono y se abre el navegador en la pantalla de
-credenciales.
+Sistema Integral de Bienestar Universitario de la **Universidad Nacional de
+Loja**, en versión **portable**: corre desde una carpeta, sin instalar nada.
+El profesional pulsa un icono, se abre su navegador en la pantalla de
+credenciales, entra y trabaja. Al cerrar, la carpeta se guarda en una memoria
+o se copia a otro computador y sigue funcionando igual.
 
-    python portable/crear_cuenta.py   # la primera vez
-    python portable/arrancar.py       # y ya
+Nueve servicios: Medicina, Enfermería, Odontología, Laboratorio Clínico,
+Farmacia, Psicología, Psicopedagogía, Trabajo Social y Becas. Más citas,
+expediente único, derivaciones, firma electrónica, talleres, portal del
+estudiante y tablero de gestión.
 
-En Windows, `portable\preparar_windows.ps1` arma la carpeta completa —con su
-propio Python dentro— y después basta el acceso directo a `portable\SIBU.bat`
-con el icono `portable\sibu.ico`.
+> El repositorio original —`Jorgeperezr/sibu`— queda **archivado** con el
+> despliegue de servidor (Oracle Cloud, PostgreSQL, nginx). Aquí continúa el
+> desarrollo de la versión portable.
 
-- **Cómo armarla y qué saber antes de usarla en serio:** `docs/PORTABLE.md`
-- **Cómo se conectan entre sí los profesionales:**
-  `docs/CONEXION_ENTRE_PORTABLES.md`
+## Arrancar
 
-El repositorio original —`Jorgeperezr/sibu`— queda archivado; aquí continúa el
-desarrollo.
+**Windows** — una sola vez, desde PowerShell en la carpeta del proyecto:
 
----
+```powershell
+portable\preparar_windows.ps1
+```
 
-Plataforma web institucional para la administración unificada de los servicios
-de la Unidad de Bienestar Universitario de la **Universidad Nacional de Loja**:
-Medicina, Enfermería, Odontología, Laboratorio Clínico, Farmacia, Psicología,
-Psicopedagogía, Trabajo Social y Becas.
+Eso arma la carpeta completa, con su propio Python dentro. Después basta un
+acceso directo a `portable\SIBU.bat` al que se le pone el icono
+`portable\sibu.ico`: ese es el icono del que habla todo esto.
 
-> Documento base funcional y técnico: `docs/Informe_Tecnico_SIBU_UNL.md`.
-
-## Stack
-
-- **Backend:** Python 3.12 · Django 5 · Django REST Framework
-- **Base de datos:** PostgreSQL 16
-- **Frontend:** HTML5 · CSS3 · JavaScript · Bootstrap 5
-- **Asíncrono:** Celery + Redis
-- **Entorno de desarrollo:** GitHub Codespaces → macOS Intel (dev container)
-
-## Arranque en Codespaces: un solo comando
-
-> **Antes de nada, compruebe la rama.** El trabajo vive en
-> `claude/sibu-onboarding-setup-pp2hws` hasta que se fusione el PR. Un
-> `git pull` estando en `main` responde «Already up to date» y no trae nada:
->
-> ```bash
-> git branch --show-current          # ¿en qué rama está?
-> git checkout claude/sibu-onboarding-setup-pp2hws
-> ```
-
-Abrir el repositorio en un Codespace y, cuando la terminal esté lista, escribir:
+**Linux o macOS:**
 
 ```bash
-make up
+portable/sibu.sh
 ```
 
-Eso es todo. No hace falta `cp .env.example .env`, ni `createsuperuser`, ni
-`runserver`, ni exportar variables.
-
-`make up` hace por su cuenta lo que antes había que recordar: deriva el dominio
-que Codespaces asigna al puerto 8000 (sin eso, todos los formularios fallan con
-un error de CSRF), comprueba que PostgreSQL responda y deja la base al día. La
-primera vez tarda un minuto; las siguientes, un segundo.
-
-**Después de un `git pull` no hay que hacer nada más.** `make up` compara lo que
-hay en la base con lo que el código define y decide solo: aplica las migraciones
-que falten y vuelve a sembrar si la actualización trajo cuentas, servicios o
-permisos nuevos. Antes eso obligaba a acordarse de `make demo` a mano, y no
-acordarse se parecía mucho a «las credenciales no funcionan».
-
-Al terminar imprime la URL. Púlsela, o abra el puerto 8000 en la pestaña
-**PORTS** de VS Code.
-
-### Con qué usuario entrar
-
-`make up` imprime las credenciales la primera vez. Para volver a verlas:
+**Con Python ya instalado**, en cualquier sistema:
 
 ```bash
-make cuentas
+python portable/crear_cuenta.py   # solo la primera vez
+python portable/arrancar.py       # y ya
 ```
 
-| Usuario | Ve |
-|---|---|
-| `1104346091` / `1104346091` | Los nueve servicios, la carga de la base institucional y `/admin/` |
-| `jhoely.lalangui`, `jorge.perez`, `daniel.cabrera`, … (contraseña = usuario) | Solo su servicio |
-| `laboratorista`, `farmaceutico`, `trabajadora`, `becas` / `sibu-demo-2026` | Solo su servicio |
-| `administrador` / `sibu-demo-2026` | Base institucional y gestión, sin contenido clínico |
-| `director` / `sibu-demo-2026` | Tablero de gestión, sin contenido clínico |
-| `estudiante` / `sibu-demo-2026` | Portal del paciente (`/portal/`) |
+`arrancar.py` busca un puerto libre, aplica las migraciones que falten,
+levanta el servidor y abre el navegador **cuando el servidor ya responde** —no
+antes, que es lo que producía la primera pantalla en blanco—.
 
-Cada profesional ve **solo su servicio**: no es una limitación del entorno de
-prueba, es el comportamiento real del sistema.
+### La primera cuenta
 
-### Si algo falla
+`portable/crear_cuenta.py` pregunta cédula, nombres y contraseña. **La primera
+cuenta de una portable nace con Administración General**, porque si no, nadie
+podría conceder servicios a nadie: no hay otro administrador al que llamar.
 
-| Lo que ve | Qué pasa |
-|---|---|
-| El navegador dice *Not Found* o pide iniciar sesión en GitHub | El puerto está privado. Pestaña **PORTS** → clic derecho en el 8000 → *Port Visibility* → **Public**. |
-| *That port is already in use* | Quedó vivo un servidor anterior: `kill $(lsof -ti:8000)` y repita `make up`. |
-| La página sale sin estilos: la barra lateral desmontada y los enlaces en fila | El navegador se quedó con una copia vieja o a medias del CSS. Recargue forzando: **Ctrl+Shift+R** (Cmd+Shift+R en Mac). Los enlaces a estáticos llevan la versión del archivo desde entonces, así que no debería repetirse. |
-| El usuario y la contraseña no son aceptados | Compruebe cuáles existen con `make cuentas`. Desde un `git pull`, `make up` repone solo las cuentas que el código define; si aun así falta la suya, fuércelo con `make preparar`. |
-| *La verificación CSRF ha fallado* al iniciar sesión | La propia pantalla lo explica ahora: dice qué Origin llegó, cuáles acepta el servidor y qué hacer. Lo más común: arrancó con `make run` en vez de `make up`, o está en una rama que no trae el arreglo (`git branch --show-current`). |
-| *sin conexión a la base de datos* | El contenedor `db` aún no levantó. Espere unos segundos y repita, o *Rebuild Container*. |
+No se puede detectar «¿hay cuentas?» con `Usuario.objects.exists()`: siempre
+responde que sí. django-guardian crea por migración la fila `AnonymousUser`
+para colgar ahí los permisos por objeto del usuario anónimo. Se usa
+`cuentas_de_persona()`.
 
-> **`.env` no se usa en desarrollo.** `.env.example` es una plantilla de
-> **producción**: trae `SECRET_KEY` vacía y `DEBUG=False`. Copiarla a `.env`
-> para trabajar en Codespaces no hace falta y solo estorba.
+## La carpeta de datos
 
-## Comandos útiles (Makefile)
-
-| Comando        | Acción                                            |
-|----------------|---------------------------------------------------|
-| `make up`      | **Arranque.** Prepara la base si hace falta y sirve |
-| `make cuentas` | Recordar con qué usuario iniciar sesión           |
-| `make preparar`| Rehacer estructura, permisos, CIE-10 y cuentas    |
-| `make perfil`  | Dar a una cuenta acceso a todos los servicios     |
-| `make test`    | Pruebas con cobertura                             |
-| `make lint`    | Ruff + Bandit                                     |
-| `make worker`  | Celery worker + beat                              |
-
-## Despliegue en un servidor real
-
-Ahí sí hace falta `.env`, y ahí `SECRET_KEY` vacía debe seguir abortando el
-arranque: una clave adivinable firma sesiones reales. El procedimiento completo
-está en `docs/DESPLIEGUE.md`; en resumen:
-
-```bash
-cp .env.example .env      # y completarlo: SECRET_KEY, ALLOWED_HOSTS, DATABASE_URL...
-python -c "import secrets; print(secrets.token_urlsafe(64))"   # para SECRET_KEY
-python manage.py check --deploy
-python manage.py preparar --sin-demo   # sin cuentas ni pacientes ficticios
-python manage.py createsuperuser
-```
-
-## Estructura
+Todo lo que la portable escribe vive junto a ella, en `datos/`:
 
 ```
-config/            Configuración (settings por ambiente, urls, celery)
-apps/              Apps de dominio (core, usuarios, academico, expediente,
-                   servicios clínicos, becas, talleres, transversales)
-api/v1/            Capa REST (routers, endpoints)
-templates/ static/ Frontend (Bootstrap 5)
-docs/              Informe técnico y documentación
-.devcontainer/     Entorno reproducible (Codespaces / macOS)
+datos/
+  sibu.sqlite3        la base entera
+  media/              evidencias de talleres, documentos, adjuntos
+  correo/             los correos que el sistema habría enviado
+  clave.txt           la SECRET_KEY de ESTA carpeta
+  sibu.log            el registro, que aquí no hay journalctl
 ```
 
-## Seguridad
+Copiar la carpeta es copiar el sistema con sus datos dentro. Borrar `datos/`
+es volver a empezar.
 
-Sistema con datos de salud y académicos sensibles: MFA, RBAC por servicio,
-cifrado de campos, auditoría inmutable y buenas prácticas OWASP. No cargar
-datos reales en entornos de desarrollo.
+`clave.txt` se genera sola la primera vez y **no se comparte**: firma las
+sesiones de esta carpeta.
 
-## Hoja de ruta (fases)
+## Dos modos: sola o conectada
 
-- **Fase 1:** base institucional por carga Excel/CSV, servicios clínicos,
-  becas (beneficiarios + seguimiento), talleres con evidencias en Google Drive.
-- **Fase 2:** integración API con el SGA y con el sistema de becas institucional.
+Cada portable decide al arrancar, mirando si existe `portable/servidor.txt`:
+
+| `portable/servidor.txt` | Qué hace | Para qué |
+|---|---|---|
+| No existe | Levanta su propio servidor contra su `datos/sibu.sqlite3` | Un profesional, su computador, sus datos |
+| Contiene una URL | No levanta nada: abre el navegador en ese SIBU central | Varios profesionales sobre un mismo expediente |
+
+Hay plantilla en `portable/servidor.txt.example`.
+
+**El modo conectado es el que el servicio necesita, y no es opcional cuál se
+elige.** Repartir una copia de `sibu.sqlite3` a cada profesional rompe el sello
+de Psicología de forma irreparable: quien tenga el archivo lo abre con
+cualquier visor de SQLite y lee el contenido clínico sin pasar por el RBAC. Una
+instancia central y las portables como clientes mantiene el sello; copias
+sincronizadas, no.
+
+**Cómo se conectan entre sí** —qué red superpuesta de código abierto usar,
+comparadas por licencia y por lo que cuesta montarlas—:
+[`docs/CONEXION_ENTRE_PORTABLES.md`](docs/CONEXION_ENTRE_PORTABLES.md).
+
+## Tres cosas que saber antes de usarla en serio
+
+1. **No hay correo.** La portable escribe los correos en `datos/correo/` en vez
+   de enviarlos. El sistema lo sabe y lo dice: los resultados de laboratorio
+   dejan una notificación que pide entregarlos en ventanilla, y el portal del
+   estudiante rechaza la vinculación explicando que este SIBU no tiene correo
+   configurado, en vez de dejar a alguien esperando un código que no va a
+   llegar.
+2. **No hay PDF si no hay WeasyPrint.** Necesita librerías del sistema (GTK en
+   Windows) que una carpeta portable no lleva. Cuando faltan, la pantalla lo
+   dice y ofrece la alternativa —ver en pantalla, exportar a Excel—; no
+   devuelve un 500.
+3. **Los adjuntos los sirve Django.** En un servidor es trabajo de nginx; aquí
+   no hay nginx, así que la portable sirve `/media/` ella misma. Sin eso se
+   sube una evidencia a un taller y luego no se puede abrir: 404 sobre un
+   archivo que está en el propio disco.
+
+Y una cuarta, por si pasa: tras **5 intentos fallidos** el acceso se bloquea
+15 minutos. La pantalla está en español, dice cuánto falta, aclara que no se ha
+perdido nada e indica `python manage.py changepassword SU_USUARIO` para cuando
+no hay nadie a quien llamar.
 
 ## Documentación
 
 | | |
 |---|---|
+| [`docs/PORTABLE.md`](docs/PORTABLE.md) | Armar la carpeta, repartirla y qué saber antes de usarla en serio. |
+| [`docs/CONEXION_ENTRE_PORTABLES.md`](docs/CONEXION_ENTRE_PORTABLES.md) | Cómo se conectan los profesionales entre sí. |
 | [`docs/OPERACION.md`](docs/OPERACION.md) | Qué se ejecuta cada día y qué significa lo que responde. |
 | [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md) | El control de acceso tal como está montado, y qué hacer al añadir un endpoint o una pantalla. |
 | [`docs/COMO_CARGAR_LA_BASE.md`](docs/COMO_CARGAR_LA_BASE.md) | La carga de la base institucional, paso a paso. |
 | [`docs/CARGA_BASE_INSTITUCIONAL.md`](docs/CARGA_BASE_INSTITUCIONAL.md) | El diccionario de las 157 columnas. |
-| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Lo que el código no puede verificar por sí mismo. |
-| [`docs/Informe_Tecnico_SIBU_UNL.md`](docs/Informe_Tecnico_SIBU_UNL.md) | El informe técnico: alcance, modelo de datos, requerimientos, flujos. |
+| [`docs/Informe_Tecnico_SIBU_UNL.md`](docs/Informe_Tecnico_SIBU_UNL.md) | Alcance, modelo de datos, requerimientos, flujos. |
+| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) · [`docs/ORACLE_CLOUD.md`](docs/ORACLE_CLOUD.md) | El despliegue de servidor, para el SIBU central. |
+
+## Reglas del dominio que no se negocian
+
+- **El sello de Psicología es absoluto.** Su contenido clínico no es accesible
+  fuera del servicio: ni Dirección, ni administración, ni break-glass.
+- **Los tableros muestran gestión, no contenido.** En servicios
+  confidenciales, un conteo de pacientes distintos menor que 5 se reporta como
+  `<5`: un conteo pequeño identifica.
+- **Un taller no es una atención clínica**, y los talleres no se publican al
+  estudiante: los ve el personal del servicio que los organiza.
+- **Verificar matrícula no suspende una beca.** El sistema informa; la decisión
+  es de Trabajo Social, con causal escrita.
+- **El portal aísla por identidad, no por rol.**
+- **La edad se calcula, nunca se guarda.** Sale de la fecha de nacimiento.
+- **El horario lo pone quien atiende**, y de ahí sale el agendamiento: sus
+  días, sus horas y cuánto dura su consulta (`citas:mi_horario`).
+- **Asignar un servicio es conceder acceso**, y lo hace Administración General
+  (`usuarios:gestion_perfiles`), no Dirección ni Coordinación.
+
+Las demás, y las trampas técnicas que ya costaron caro, en `CLAUDE.md`.
+
+## Desarrollo
+
+Para trabajar en el código hace falta el entorno completo —PostgreSQL— porque
+es contra el que corren las pruebas y es el que usa el SIBU central:
+
+```bash
+make up         # prepara la base si hace falta y sirve
+make cuentas    # recordar con qué usuario entrar
+make perfil     # dar a una cuenta todos los servicios (solo DEBUG=True)
+make test       # pytest con cobertura
+make lint       # ruff check, ruff format --check y bandit (separados)
+```
+
+El `&&` entre `ruff check` y `ruff format --check` oculta el fallo de formato y
+tumba el CI: van separados.
+
+### Estructura
+
+```
+config/settings/   base · dev · prod · test · portable
+portable/          launcher, creación de cuenta, scripts e icono
+apps/              core, usuarios, academico, expediente, los nueve
+                   servicios, becas, talleres, citas, portal, reportes
+api/v1/            capa REST
+templates/ static/ Bootstrap 5
+docs/              documentación
+```
+
+Cada app sigue la misma división: `models`, `services` (lógica), `selectors`
+(consultas), `api`, `serializers`, `views`, `urls`, `tests`.
+
+### Antes de dar por terminado un cambio
+
+Los cinco, por separado, y las pruebas tienen que pasar **todas**:
+
+```bash
+ruff check .
+ruff format --check .
+pytest apps -q
+python manage.py check
+python manage.py makemigrations --check --dry-run
+```

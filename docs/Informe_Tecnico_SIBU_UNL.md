@@ -983,7 +983,7 @@ sibu/
 ├── templates/  static/      # Bootstrap 5, componentes compartidos
 ├── tests/                   # unitarias, integración, autorización
 ├── docker/  docs/  scripts/
-└── requirements/ (base.txt, prod.txt, dev.txt)
+└── requirements/ (comun.txt, base.txt, prod.txt, dev.txt, portable.txt)
 ```
 
 Convenciones: cada app expone `models.py`, `services.py` (lógica de negocio, sin lógica en vistas), `selectors.py` (consultas), `api.py`, `permissions.py`, `signals.py` (auditoría), `reports.py`. Migraciones revisadas en code review; datos de catálogo por fixtures/comandos (`load_cie10`, `load_examenes`).

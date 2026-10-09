@@ -129,3 +129,50 @@ poner la base en el computador de cada quien. Por eso la arquitectura que se
 recomienda en `docs/CONEXION_ENTRE_PORTABLES.md` **no** reparte la base: deja
 una sola instancia con los datos y convierte la portable en el cliente que
 llega a ella.
+
+### Los recordatorios de cita solo se repasan al abrir el programa
+
+El recordatorio T-48h/T-24h estaba escrito como tarea de Celery y **nadie lo
+disparaba**: el planificador configurado es el de base de datos
+(`django_celery_beat`) y el código no crea ninguna fila de `PeriodicTask`. La
+tarea existía, tenía pruebas y no corría nunca —ni en un servidor—.
+
+Ahora hay un comando, y es el que vale para las dos formas de usar SIBU:
+
+    python manage.py recordatorios
+
+Crea los recordatorios que ya tocaba enviar y nadie envió. Es idempotente:
+llamarlo dos veces no duplica nada.
+
+- **La portable lo llama en cada arranque.** No hace falta hacer nada.
+- **En un servidor va en el cron**, cada hora, que es más simple que levantar
+  un `beat` para una tarea:
+
+      0 * * * * cd /opt/sibu && python manage.py recordatorios --silencioso
+
+Con la portable cerrada no se avisa a nadie: es el límite de no tener un
+servicio corriendo detrás, y es otra razón para que el SIBU de verdad esté en
+una instancia central y las portables sean clientes.
+
+Un detalle que importa en el texto del aviso: el título dice las horas que **de
+verdad** faltan, no las de la ventana. Si la portable estuvo cerrada y se abre
+a 25 horas de una cita, el aviso pendiente es el de la ventana de 48 —es el que
+no se envió—, pero anunciarlo como «en 48h» le adelantaría la cita un día
+entero a quien lo lee.
+
+### Modo cliente: cuando la portable abre el SIBU de la Unidad
+
+Con un `portable/servidor.txt` dentro (hay plantilla en
+`portable/servidor.txt.example`), la portable no levanta base ninguna: abre el
+navegador contra la instancia central. El mismo paquete y el mismo icono
+sirven para los dos modos.
+
+La dirección se escribe como la escribiría una persona —`10.0.0.5:8000`,
+`sibu.unl.edu.ec`— y el launcher le pone el esquema; sin eso, el navegador
+recibía algo que no es una URL y abría una búsqueda.
+
+Antes de abrir el navegador comprueba que el servidor contesta, y si no,
+**dice las tres cosas que pueden estar pasando** —la red privada sin conectar,
+el servidor apagado, la dirección equivocada— y aclara que no se ha perdido
+nada, porque en modo cliente los datos no están en la carpeta. Un «no se puede
+conectar» del navegador no distingue entre esas tres.

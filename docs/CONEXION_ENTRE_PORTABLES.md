@@ -74,6 +74,14 @@ remedio; este no.
   Con ese archivo, el icono abre el navegador en el servidor. Sin él, levanta
   el SIBU local. El mismo paquete sirve para los dos modos.
 
+  La dirección se escribe como la escribiría cualquiera —`10.0.0.5:8000`,
+  `sibu-unidad`— y el launcher le pone el esquema; y antes de abrir el
+  navegador comprueba que el servidor contesta. Si no, **dice que puede ser la
+  red privada sin conectar**, el servidor apagado o la dirección equivocada, y
+  aclara que no se ha perdido nada: en este modo los datos no están en la
+  carpeta. Un «no se puede conectar» del navegador no distingue entre esas
+  tres cosas, y la primera es la más frecuente y la más fácil de arreglar.
+
 El servidor puede ser la máquina de Oracle Cloud que ya está documentada en
 `docs/ORACLE_CLOUD.md`, o un computador de la Unidad que quede encendido.
 
