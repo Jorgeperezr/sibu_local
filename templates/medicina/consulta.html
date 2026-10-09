@@ -39,9 +39,18 @@
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="accion" value="guardar">
+          {% comment %}
+          Estaba `disabled` y SIEMPRE en blanco: `motivo_consulta` solo se
+          rellenaba desde un POST al abrir la consulta, y el expediente abría
+          con un enlace. Así que el campo no se podía escribir, no se podía
+          llenar por otro camino y quedaba un hueco gris en la historia
+          clínica justo donde va por qué vino la persona.
+          {% endcomment %}
           <div class="mb-3">
-            <label class="form-label">Motivo de consulta</label>
-            <input class="form-control" value="{{ atencion.motivo_consulta }}" disabled>
+            <label class="form-label" for="motivo_consulta">Motivo de consulta</label>
+            <input class="form-control" id="motivo_consulta" name="motivo_consulta"
+                   maxlength="255" value="{{ atencion.motivo_consulta }}"
+                   {% if atencion.inmutable %}disabled{% endif %}>
           </div>
           <div class="mb-3">
             <label class="form-label">Enfermedad actual</label>

@@ -4,9 +4,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from apps.core.models import PeriodoAcademico, Servicio
 from apps.expediente.models import Expediente
+from apps.expediente.services import borrador_abierto, exigir_atencion_editable
 from apps.usuarios.decorators import verificar_acceso_atencion, verificar_es_del_servicio
 
 from . import services
@@ -25,6 +27,12 @@ def bandeja(request):
     return render(request, "psicopedagogia/bandeja.html", {"fichas": fichas})
 
 
+# Solo POST: abrir una atención CREA la historia clínica, y una vista que
+# escribe no puede responder a un GET. Bastaría un `<img
+# src="/psicopedagogia/iniciar/37/">` en cualquier página que abriera un profesional
+# para dejar una historia a su nombre sobre alguien a quien no ha visto. El
+# expediente la abre con un formulario.
+@require_POST
 @login_required
 def iniciar(request, expediente_id):
     servicio = get_object_or_404(Servicio, codigo="psicopedagogia")
@@ -33,6 +41,15 @@ def iniciar(request, expediente_id):
     perfil = getattr(request.user, "perfil", None)
     if perfil is None:
         raise PermissionDenied("Su usuario no tiene perfil profesional.")
+
+    # Si este profesional ya tiene un borrador abierto con esta persona, se
+    # continúa ese. Antes se creaba una atención NUEVA en cada entrada: pulsar
+    # la acción, volver atrás y volver a pulsar dejaba dos fichas en blanco en
+    # el expediente de la misma persona, y una ficha clínica no se borra.
+    abierto = borrador_abierto(expediente, servicio, perfil, "psicopedagogia")
+    if abierto is not None:
+        return redirect("psicopedagogia:ficha", pk=abierto.pk)
+
     ficha = services.crear_ficha(
         expediente=expediente,
         profesional=perfil,
@@ -53,6 +70,12 @@ def ficha(request, pk):
     verificar_acceso_atencion(request.user, obj.atencion)
 
     if request.method == "POST":
+        try:
+            exigir_atencion_editable(obj.atencion)
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+            return redirect("psicopedagogia:ficha", pk=obj.pk)
+
         try:
             if request.POST.get("accion") == "seguimiento":
                 services.registrar_seguimiento(

@@ -171,10 +171,20 @@
     {% comment %}
     Los botones salen del RBAC, igual que el menú: quien no puede abrir esa
     atención tampoco ve el botón, y el que lo ve no recibe un 403 al pulsarlo.
+
+    Y van por POST, no por enlace. Abrir una atención ESCRIBE —crea la
+    historia clínica en borrador—, y una vista que escribe no puede responder
+    a un GET: bastaría un `<img src="/medicina/iniciar/37/">` en cualquier
+    página que abriera un profesional para dejar una historia clínica abierta
+    a su nombre sobre un paciente que no ha visto. Es lo mismo que ya nos
+    pasó con cerrar sesión.
     {% endcomment %}
-    <a href="{% url a.url_name expediente.id %}" class="btn btn-sm btn-{{ a.variante }}">
-      {% if a.icono %}<i class="bi bi-{{ a.icono }}"></i>{% endif %} {{ a.etiqueta }}
-    </a>
+    <form method="post" action="{% url a.url_name expediente.id %}" class="d-inline">
+      {% csrf_token %}
+      <button class="btn btn-sm btn-{{ a.variante }}">
+        {% if a.icono %}<i class="bi bi-{{ a.icono }}"></i>{% endif %} {{ a.etiqueta }}
+      </button>
+    </form>
     {% endfor %}
   </div>
 </div>

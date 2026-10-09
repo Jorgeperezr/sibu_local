@@ -486,3 +486,61 @@ def verificar_profesional_del_servicio(perfil, servicio) -> None:
         raise ValidationError(
             f"No pertenece al servicio {servicio.nombre}: no puede abrir una atención en él."
         )
+
+
+def borrador_abierto(expediente, servicio, profesional, relacion: str):
+    """
+    El borrador que este profesional ya tiene abierto con esta persona en este
+    servicio, si lo hay. Devuelve el registro del servicio —la historia
+    clínica, la ficha— y no la atención, que es lo que abren las pantallas.
+
+    Existe porque abrir una consulta creaba una atención NUEVA cada vez.
+    Pulsar «Consulta médica», volver atrás y volver a pulsar —o recargar—
+    dejaba dos historias clínicas en blanco en el expediente de la misma
+    persona. Y una historia clínica no se borra: queda ahí para siempre y hay
+    que explicar de dónde salió. Comprobado ejercitándolo: tres entradas
+    seguidas dejaron tres.
+
+    Se reutiliza SOLO el borrador. Una atención cerrada o firmada es un acto
+    terminado: si la persona vuelve, eso es una atención nueva, y reaprovechar
+    la anterior reescribiría la historia.
+
+    `relacion` es el nombre del registro del servicio colgado de la atención
+    (`medicina`, `odontologia`, `psicologia`, `psicopedagogia`). Si la
+    atención no lo tiene —una fila creada por otro camino—, se devuelve None y
+    la pantalla abre una nueva: Django lanza `RelatedObjectDoesNotExist`, que
+    hereda de `AttributeError`, así que el `getattr` con defecto lo absorbe.
+    """
+    from .models import Atencion
+
+    atencion = (
+        Atencion.objects.filter(
+            expediente=expediente,
+            servicio=servicio,
+            profesional=profesional,
+            estado=Atencion.Estado.BORRADOR,
+        )
+        .order_by("-fecha_hora")
+        .first()
+    )
+    if atencion is None:
+        return None
+    return getattr(atencion, relacion, None)
+
+
+def exigir_atencion_editable(atencion) -> None:
+    """
+    Una atención firmada no se modifica: se enmienda.
+
+    Lo decía el modelo —«Una atención firmada es inmutable; las correcciones
+    se hacen por enmienda»— y no lo comprobaba nadie en el camino de
+    escritura. Las plantillas ponen `disabled` en los campos, que es una
+    cortesía del navegador: un POST con los campos dentro reescribía la
+    historia clínica firmada, y una firma sobre un documento que después
+    cambia no vale nada.
+    """
+    if atencion.inmutable:
+        raise ValidationError(
+            "Esta atención está firmada y no se puede modificar. "
+            "Las correcciones se hacen por enmienda."
+        )

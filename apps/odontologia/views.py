@@ -4,10 +4,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from apps.core.models import CIE10, Servicio
 from apps.core.selectors import diagnosticos_por_servicio
 from apps.expediente.models import Atencion, Expediente
+from apps.expediente.services import borrador_abierto, exigir_atencion_editable
 from apps.medicina.models import Diagnostico
 from apps.medicina.services import agregar_diagnostico
 from apps.usuarios.decorators import verificar_acceso_atencion, verificar_es_del_servicio
@@ -87,6 +89,12 @@ def bandeja(request):
     return render(request, "odontologia/bandeja.html", {"historias": historias})
 
 
+# Solo POST: abrir una atención CREA la historia clínica, y una vista que
+# escribe no puede responder a un GET. Bastaría un `<img
+# src="/odontologia/iniciar/37/">` en cualquier página que abriera un profesional
+# para dejar una historia a su nombre sobre alguien a quien no ha visto. El
+# expediente la abre con un formulario.
+@require_POST
 @login_required
 def iniciar_consulta(request, expediente_id):
     """Crea la HC odontológica y redirige al odontograma."""
@@ -95,6 +103,20 @@ def iniciar_consulta(request, expediente_id):
     if perfil is None:
         messages.error(request, "Su usuario no tiene perfil profesional asignado.")
         return redirect("expediente:detalle", pk=expediente.id)
+
+    servicio = Servicio.objects.filter(codigo="odontologia").first()
+    if servicio is None:
+        messages.error(request, "El servicio 'odontologia' no está configurado.")
+        return redirect("expediente:detalle", pk=expediente.id)
+
+    # Si este profesional ya tiene un borrador abierto con esta persona, se
+    # continúa ese. Antes se creaba una atención NUEVA en cada entrada: pulsar
+    # la acción, volver atrás y volver a pulsar dejaba dos fichas en blanco en
+    # el expediente de la misma persona, y una ficha clínica no se borra.
+    abierto = borrador_abierto(expediente, servicio, perfil, "odontologia")
+    if abierto is not None:
+        return redirect("odontologia:consulta", pk=abierto.pk)
+
     try:
         hc = services.crear_atencion_odontologia(
             expediente=expediente,
@@ -145,6 +167,12 @@ def consulta(request, pk):
     perfil = getattr(request.user, "perfil", None)
 
     if request.method == "POST":
+        try:
+            exigir_atencion_editable(hc.atencion)
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+            return redirect("odontologia:consulta", pk=hc.pk)
+
         accion = request.POST.get("accion")
         try:
             if accion == "pieza":

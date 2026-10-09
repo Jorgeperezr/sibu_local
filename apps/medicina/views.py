@@ -4,12 +4,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from apps.core.mensajes import detalle_de_error
 from apps.core.models import CIE10, Servicio
 from apps.core.selectors import diagnosticos_por_servicio
 from apps.enfermeria.services import ultimo_triaje
 from apps.expediente.models import Atencion, Expediente
+from apps.expediente.services import borrador_abierto, exigir_atencion_editable
 from apps.farmacia import services as farmacia_services
 from apps.farmacia.models import Medicamento
 from apps.laboratorio import services as laboratorio_services
@@ -41,6 +43,12 @@ def bandeja(request):
     return render(request, "medicina/bandeja.html", {"historias": historias})
 
 
+# Solo POST: abrir una atención CREA la historia clínica, y una vista que
+# escribe no puede responder a un GET. Bastaría un `<img
+# src="/medicina/iniciar/37/">` en cualquier página que abriera un profesional
+# para dejar una historia a su nombre sobre alguien a quien no ha visto. El
+# expediente la abre con un formulario.
+@require_POST
 @login_required
 def iniciar_consulta(request, expediente_id):
     """Crea la HC médica en borrador y redirige al escritorio de consulta."""
@@ -49,6 +57,20 @@ def iniciar_consulta(request, expediente_id):
     if perfil is None:
         messages.error(request, "Su usuario no tiene perfil profesional asignado.")
         return redirect("expediente:detalle", pk=expediente.id)
+
+    servicio = Servicio.objects.filter(codigo="medicina").first()
+    if servicio is None:
+        messages.error(request, "El servicio 'medicina' no está configurado.")
+        return redirect("expediente:detalle", pk=expediente.id)
+    # Si este profesional ya tiene un borrador abierto con esta persona, se
+    # continúa ese. Antes se creaba una atención NUEVA en cada entrada: pulsar
+    # la acción, volver atrás y volver a pulsar dejaba dos historias clínicas
+    # en blanco en el mismo expediente, y una historia clínica no se borra
+    # —queda ahí y hay que explicar de dónde salió—.
+    abierto = borrador_abierto(expediente, servicio, perfil, "medicina")
+    if abierto is not None:
+        return redirect("medicina:consulta", pk=abierto.pk)
+
     try:
         hc = services.crear_atencion_medicina(
             expediente=expediente,
@@ -79,9 +101,19 @@ def consulta(request, pk):
     verificar_acceso_atencion(request.user, hc.atencion)
 
     if request.method == "POST":
+        try:
+            exigir_atencion_editable(hc.atencion)
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+            return redirect("medicina:consulta", pk=hc.pk)
+
         accion = request.POST.get("accion")
 
         if accion == "guardar":
+            # El motivo vive en la atención, no en la historia: es lo que dijo
+            # la persona al llegar, y lo comparten todos los servicios.
+            hc.atencion.motivo_consulta = request.POST.get("motivo_consulta", "")
+            hc.atencion.save(update_fields=["motivo_consulta"])
             hc.enfermedad_actual = request.POST.get("enfermedad_actual", "")
             hc.plan_tratamiento = request.POST.get("plan_tratamiento", "")
             hc.indicaciones = request.POST.get("indicaciones", "")

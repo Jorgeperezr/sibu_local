@@ -11,10 +11,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from apps.core.models import CIE10, Servicio
 from apps.core.selectors import diagnosticos_por_servicio
 from apps.expediente.models import Expediente
+from apps.expediente.services import exigir_atencion_editable
 from apps.medicina.models import Diagnostico
 from apps.medicina.services import agregar_diagnostico
 from apps.usuarios.decorators import verificar_acceso_atencion, verificar_es_del_servicio
@@ -43,6 +45,12 @@ def bandeja(request):
     )
 
 
+# Solo POST: abrir una atención CREA la historia clínica, y una vista que
+# escribe no puede responder a un GET. Bastaría un `<img
+# src="/psicologia/iniciar/37/">` en cualquier página que abriera un profesional
+# para dejar una historia a su nombre sobre alguien a quien no ha visto. El
+# expediente la abre con un formulario.
+@require_POST
 @login_required
 def iniciar(request, expediente_id):
     """Abre un proceso psicológico."""
@@ -82,6 +90,12 @@ def proceso(request, pk):
     perfil = getattr(request.user, "perfil", None)
 
     if request.method == "POST":
+        try:
+            exigir_atencion_editable(ficha.atencion)
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+            return redirect("psicologia:proceso", pk=ficha.pk)
+
         accion = request.POST.get("accion")
         try:
             if accion == "sesion":
