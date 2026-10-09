@@ -304,3 +304,143 @@ def crear_perfil(*, usuario, usuario_que_asigna, **asignacion):
 
     perfil = PerfilProfesional.objects.create(usuario=usuario)
     return asignar_perfil(perfil=perfil, usuario_que_asigna=usuario_que_asigna, **asignacion)
+
+
+def crear_cuenta(
+    *,
+    cedula: str,
+    nombres: str,
+    apellidos: str,
+    clave_temporal: str,
+    rol_principal: str,
+    usuario_que_crea,
+    correo: str = "",
+    telefono: str = "",
+    con_ficha: bool = True,
+):
+    """
+    Da de alta la cuenta de acceso de una persona del equipo.
+
+    Hasta ahora no había forma de hacerlo desde el sistema: las cuentas solo
+    existían si alguien abría una terminal y ejecutaba `createsuperuser` o
+    `portable/crear_cuenta.py`. Una unidad con diez profesionales no puede
+    arrancar así, y en una portable —una carpeta en el computador de alguien—
+    menos todavía.
+
+    Tres cosas que no se negocian aquí:
+
+    - **La cédula es la identidad.** Es el `username`, y tiene que pasar el
+      módulo 10 ecuatoriano: una cédula inventada deja una cuenta que luego no
+      casa con ninguna ficha de persona.
+    - **La clave es temporal y el sistema lo sabe.** Quien crea la cuenta tiene
+      que teclear una clave y decírsela a su dueño, así que durante un rato la
+      sabe alguien más. `debe_cambiar_clave` obliga a cambiarla antes de hacer
+      nada; sin eso, Administración General podría entrar como la psicóloga, y
+      el sello de Psicología es absoluto también frente a quien administra.
+    - **Queda escrito quién creó a quién.** Nunca la clave: ni en claro, ni
+      cifrada, ni su longitud.
+
+    `con_ficha` crea además la ficha profesional, que es lo que convierte la
+    cuenta en alguien que atiende. No se crea para un USUARIO_FINAL: esa es la
+    cuenta de un estudiante en el portal, y una ficha profesional la pondría en
+    las bandejas del personal.
+    """
+    from django.conf import settings
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError
+    from django.db import transaction
+    from guardian.conf import settings as guardian
+
+    from apps.academico.validators import normalizar_cedula, validar_cedula_ecuatoriana
+    from apps.auditoria.models import LogAuditoria
+
+    from .models import Rol, Usuario
+
+    cedula = normalizar_cedula(cedula)
+    nombres = (nombres or "").strip()
+    apellidos = (apellidos or "").strip()
+    correo = (correo or "").strip()
+
+    if not cedula:
+        raise ValidationError("La cédula es obligatoria: es con lo que la persona ingresa.")
+
+    # ANTES del dígito verificador, y no después: con «AnonymousUser» —el
+    # nombre que trae guardian— la cédula ya falla el módulo 10, así que el
+    # guardia puesto detrás no se ejecutaba nunca. Era código muerto que
+    # parecía una protección. Delante sí actúa, y el nombre del centinela es
+    # configurable: nada impide que un día sea algo que el módulo 10 acepte.
+    centinela = getattr(settings, "ANONYMOUS_USER_NAME", guardian.ANONYMOUS_USER_NAME)
+    if cedula == centinela:
+        raise ValidationError("Ese nombre lo usa el sistema para el usuario anónimo interno.")
+
+    if not validar_cedula_ecuatoriana(cedula):
+        raise ValidationError(
+            f"La cédula {cedula} no es válida (no pasa el dígito verificador). "
+            "Compruébela antes de crear la cuenta."
+        )
+    if not nombres or not apellidos:
+        raise ValidationError("Hacen falta los nombres y los apellidos.")
+
+    if (
+        Usuario.objects.filter(username=cedula).exists()
+        or Usuario.objects.filter(cedula=cedula).exists()
+    ):
+        raise ValidationError(
+            f"Ya hay una cuenta con la cédula {cedula}. Búsquela en la lista de perfiles."
+        )
+
+    if rol_principal not in dict(Rol.choices):
+        raise ValidationError("Ese rol no existe.")
+
+    # Las reglas de contraseña de Django, con el nombre y la cédula delante:
+    # así rechaza «1100000007» como clave de la cuenta 1100000007.
+    candidato = Usuario(username=cedula, first_name=nombres, last_name=apellidos, email=correo)
+    validate_password(clave_temporal, user=candidato)
+
+    with transaction.atomic():
+        usuario = Usuario.objects.create_user(
+            username=cedula,
+            password=clave_temporal,
+            first_name=nombres,
+            last_name=apellidos,
+            email=correo,
+            cedula=cedula,
+            telefono=telefono.strip(),
+            rol_principal=rol_principal,
+            debe_cambiar_clave=True,
+        )
+
+        LogAuditoria.objects.create(
+            usuario=usuario_que_crea,
+            rol_activo=getattr(usuario_que_crea, "rol_principal", ""),
+            accion=LogAuditoria.Accion.CREATE,
+            modulo="usuarios",
+            entidad="Usuario",
+            entidad_id=str(usuario.pk),
+            # Sin rastro de la clave: ni en claro, ni su longitud.
+            detalle={
+                "cuenta": usuario.username,
+                "nombre": usuario.get_full_name(),
+                "rol": rol_principal,
+                "correo": correo,
+                "con_ficha": bool(con_ficha and rol_principal != Rol.USUARIO_FINAL),
+            },
+        )
+
+        if con_ficha and rol_principal != Rol.USUARIO_FINAL:
+            crear_perfil(usuario=usuario, usuario_que_asigna=usuario_que_crea)
+
+    return usuario
+
+
+def clave_cambiada(usuario):
+    """
+    La persona puso su propia clave: la temporal deja de serlo.
+
+    Se llama desde la vista del cambio, que es la única que sabe que el cambio
+    salió bien.
+    """
+    if usuario.debe_cambiar_clave:
+        usuario.debe_cambiar_clave = False
+        usuario.save(update_fields=["debe_cambiar_clave"])
+    return usuario

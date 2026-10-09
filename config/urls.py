@@ -9,6 +9,7 @@ from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.firma import api as firma_api
+from apps.usuarios import views as usuarios_views
 
 urlpatterns = [
     # FirmaEC exige que la acción se llame así (manual 11.4.2).
@@ -19,6 +20,16 @@ urlpatterns = [
     ),
     path("admin/", admin.site.urls),
     path("", TemplateView.as_view(template_name="inicio.html"), name="inicio"),
+    # El cambio de contraseña, ANTES del include de Django: el suyo existe pero
+    # se dibuja con la plantilla del panel de administración —otra cabecera,
+    # otra tipografía y un enlace a «Administración del sitio»—, y no estaba
+    # enlazado desde ningún sitio, así que nadie podía cambiar su contraseña.
+    # Declarado aquí primero, `password_change` resuelve a la pantalla de SIBU.
+    path(
+        "cuentas/password_change/",
+        usuarios_views.cambiar_clave,
+        name="password_change",
+    ),
     path("cuentas/", include("django.contrib.auth.urls")),  # login/logout/password
     # API v1
     path("auditoria/", include("apps.auditoria.urls")),

@@ -57,6 +57,16 @@ class Usuario(AbstractUser):
     mfa_habilitado = models.BooleanField(default=False)
     telefono = models.CharField(max_length=20, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
+    # Una cuenta recién creada por Administración General nace con una clave
+    # temporal que el administrador tuvo que teclear y decir en voz alta. Hasta
+    # que la persona ponga la suya, quien la creó puede entrar como ella —y si
+    # la cuenta es de Psicología, eso sería una puerta al contenido sellado—.
+    # El sistema la obliga a cambiarla antes de hacer nada.
+    debe_cambiar_clave = models.BooleanField(
+        default=False,
+        verbose_name="debe cambiar la clave",
+        help_text="La cuenta tiene una clave temporal y no puede usarse hasta cambiarla.",
+    )
 
     class Meta:
         verbose_name = "usuario"

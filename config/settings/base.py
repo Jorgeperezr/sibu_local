@@ -87,6 +87,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
     "apps.auditoria.middleware.AuditoriaMiddleware",
+    # Después de la auditoría a propósito: el desvío por clave temporal también
+    # se registra, que es lo que permite ver si alguien intentó trabajar con la
+    # clave que le tecleó otro.
+    "apps.usuarios.middleware.ExigirCambioDeClave",
     "axes.middleware.AxesMiddleware",
 ]
 

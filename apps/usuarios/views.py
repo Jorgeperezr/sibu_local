@@ -14,7 +14,9 @@ profesional pueda comprobar con qué permisos trabaja.
 """
 
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -31,6 +33,8 @@ from .services import (
     actualizar_mi_perfil,
     agregar_actividad,
     asignar_perfil,
+    clave_cambiada,
+    crear_cuenta,
     crear_perfil,
     eliminar_actividad,
 )
@@ -214,3 +218,91 @@ def alta_perfil(request, pk):
         "Asígnele sección y servicios para que pueda atender.",
     )
     return redirect("usuarios:editar_perfil", pk=perfil.pk)
+
+
+@login_required
+def nueva_cuenta(request):
+    """
+    Dar de alta a alguien del equipo, desde el sistema.
+
+    Hasta ahora no se podía: las cuentas solo existían si alguien abría una
+    terminal. Una unidad con diez profesionales no arranca así, y en una
+    portable —una carpeta en el computador de alguien— menos.
+
+    Termina en la pantalla de servicios del recién creado, que es el paso que
+    falta para que pueda atender: una cuenta sin servicios ve el sistema y no
+    puede hacer nada en él.
+    """
+    _solo_administracion(request)
+
+    if request.method == "POST":
+        try:
+            usuario = crear_cuenta(
+                cedula=request.POST.get("cedula", ""),
+                nombres=request.POST.get("nombres", ""),
+                apellidos=request.POST.get("apellidos", ""),
+                correo=request.POST.get("correo", ""),
+                telefono=request.POST.get("telefono", ""),
+                rol_principal=request.POST.get("rol", Rol.PROFESIONAL),
+                clave_temporal=request.POST.get("clave", ""),
+                usuario_que_crea=request.user,
+            )
+            messages.success(
+                request,
+                f"Cuenta creada para {usuario.get_full_name()}. Ingresa con su cédula "
+                f"{usuario.username} y la clave temporal, y el sistema le pedirá "
+                "cambiarla antes de dejarle hacer nada.",
+            )
+            perfil = PerfilProfesional.objects.filter(usuario=usuario).first()
+            if perfil:
+                return redirect("usuarios:editar_perfil", pk=perfil.pk)
+            return redirect("usuarios:gestion_perfiles")
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+            # Se devuelve lo tecleado —menos la clave— para no obligar a
+            # escribirlo todo otra vez por una cédula mal copiada.
+            return render(
+                request,
+                "usuarios/nueva_cuenta.html",
+                {"roles": Rol.choices, "datos": request.POST},
+            )
+
+    return render(
+        request,
+        "usuarios/nueva_cuenta.html",
+        {"roles": Rol.choices, "datos": {}},
+    )
+
+
+@login_required
+def cambiar_clave(request):
+    """
+    La pantalla propia para cambiar la contraseña.
+
+    La había, pero era la del panel de administración de Django: otra cabecera,
+    otra tipografía y un enlace a «Administración del sitio» que a un
+    profesional no le lleva a ninguna parte. Y no estaba enlazada desde ningún
+    sitio, así que en la práctica nadie podía cambiar su contraseña.
+
+    Es también la única salida cuando la cuenta tiene clave temporal: el
+    middleware trae aquí cada página hasta que su dueño pone la suya.
+    """
+    if request.method == "POST":
+        formulario = PasswordChangeForm(request.user, request.POST)
+        if formulario.is_valid():
+            usuario = formulario.save()
+            clave_cambiada(usuario)
+            # Sin esto, cambiar la clave cierra la propia sesión: el hash de la
+            # sesión deja de coincidir y la persona acaba en el login sin saber
+            # si el cambio se guardó.
+            update_session_auth_hash(request, usuario)
+            messages.success(request, "Su contraseña quedó cambiada.")
+            return redirect("inicio")
+    else:
+        formulario = PasswordChangeForm(request.user)
+
+    return render(
+        request,
+        "registration/password_change_form.html",
+        {"form": formulario, "temporal": request.user.debe_cambiar_clave},
+    )

@@ -44,11 +44,27 @@ python portable/arrancar.py       # y ya
 levanta el servidor y abre el navegador **cuando el servidor ya responde** —no
 antes, que es lo que producía la primera pantalla en blanco—.
 
-### La primera cuenta
+### La primera cuenta, y las demás
 
 `portable/crear_cuenta.py` pregunta cédula, nombres y contraseña. **La primera
 cuenta de una portable nace con Administración General**, porque si no, nadie
 podría conceder servicios a nadie: no hay otro administrador al que llamar.
+
+A partir de ahí **no hace falta volver a la terminal**: esa cuenta da de alta
+al resto desde *Perfiles → Nueva cuenta*. Cada alta son tres pasos y termina
+con la persona atendiendo:
+
+1. Administración General crea la cuenta con la cédula y una **clave
+   temporal**, que teclea y le dice a su dueño.
+2. La misma pantalla lleva a asignar sección y servicios. Sin servicios, la
+   persona entra y no puede hacer nada.
+3. Su dueño entra con la cédula y la clave temporal, y **el sistema le obliga
+   a cambiarla antes de dejarle ver nada**: mientras la clave la sepan dos
+   personas, nadie puede responder de lo que se haga con esa cuenta —y si la
+   cuenta es de Psicología, sería una puerta al contenido sellado—.
+
+Luego cada profesional declara su horario en *Mi horario*, y de esas franjas
+salen los turnos que puede reservar ventanilla.
 
 No se puede detectar «¿hay cuentas?» con `Usuario.objects.exists()`: siempre
 responde que sí. django-guardian crea por migración la fila `AnonymousUser`

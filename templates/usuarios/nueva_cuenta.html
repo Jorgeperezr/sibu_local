@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Nueva cuenta · SIBU{% endblock %}
+{% block content %}
+<div class="sibu-cabecera">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Nueva cuenta</h1>
+    <small class="text-muted d-block">Dar de alta a alguien del equipo</small>
+  </div>
+  <a href="{% url 'usuarios:gestion_perfiles' %}" class="btn btn-sm btn-outline-secondary">
+    Volver
+  </a>
+</div>
+
+{% comment %}
+Hasta esta pantalla, las cuentas solo existían si alguien abría una terminal y
+ejecutaba un comando. Una unidad con diez profesionales no arranca así, y en
+una portable —una carpeta en el computador de alguien— menos todavía.
+{% endcomment %}
+<div class="alert alert-secondary small">
+  La cuenta se crea con una <strong>clave temporal</strong> que usted teclea y
+  le dice a su dueño. El sistema le pedirá cambiarla la primera vez que entre,
+  antes de dejarle hacer nada: mientras la clave la sepan dos personas, nadie
+  puede responder de lo que se haga con ella.
+</div>
+
+<form method="post" autocomplete="off">
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header">Quién es</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="cedula" class="form-label">Cédula</label>
+          <input type="text" class="form-control" id="cedula" name="cedula"
+                 value="{{ datos.cedula|default:'' }}" required maxlength="13"
+                 inputmode="numeric">
+          <div class="form-text">Es con lo que ingresa al sistema.</div>
+        </div>
+        <div class="col-md-4">
+          <label for="nombres" class="form-label">Nombres</label>
+          <input type="text" class="form-control" id="nombres" name="nombres"
+                 value="{{ datos.nombres|default:'' }}" required>
+        </div>
+        <div class="col-md-4">
+          <label for="apellidos" class="form-label">Apellidos</label>
+          <input type="text" class="form-control" id="apellidos" name="apellidos"
+                 value="{{ datos.apellidos|default:'' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="correo" class="form-label">Correo institucional</label>
+          <input type="email" class="form-control" id="correo" name="correo"
+                 value="{{ datos.correo|default:'' }}">
+          <div class="form-text">Opcional.</div>
+        </div>
+        <div class="col-md-6">
+          <label for="telefono" class="form-label">Teléfono</label>
+          <input type="text" class="form-control" id="telefono" name="telefono"
+                 value="{{ datos.telefono|default:'' }}" maxlength="20">
+          <div class="form-text">Opcional.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Con qué entra</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="rol" class="form-label">Rol</label>
+          <select class="form-select" id="rol" name="rol">
+            {% for valor, etiqueta in roles %}
+            <option value="{{ valor }}"
+              {% if datos.rol == valor %}selected{% elif not datos.rol and valor == 'profesional' %}selected{% endif %}>
+              {{ etiqueta }}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">
+            El rol dice qué módulos ve. Los servicios —y con ellos el contenido
+            clínico— se asignan en la pantalla siguiente.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label for="clave" class="form-label">Clave temporal</label>
+          <input type="text" class="form-control" id="clave" name="clave" required
+                 autocomplete="new-password">
+          <div class="form-text">
+            Visible a propósito: usted tiene que poder leérsela a su dueño. No
+            vale la cédula ni una clave corta o común.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Crear la cuenta</button>
+  <a href="{% url 'usuarios:gestion_perfiles' %}" class="btn btn-outline-secondary">Cancelar</a>
+</form>
+{% endblock %}

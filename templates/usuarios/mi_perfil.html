@@ -1,11 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Mis datos · SIBU{% endblock %}
 {% block content %}
-<div class="mb-3">
-  <h1 class="h4 sibu-titulo mb-0">Mis datos</h1>
-  <small class="text-muted">
-    Lo que le identifica al atender y al firmar un documento.
-  </small>
+<div class="sibu-cabecera mb-3">
+  <div>
+    <h1 class="h4 sibu-titulo mb-0">Mis datos</h1>
+    <small class="text-muted d-block">
+      Lo que le identifica al atender y al firmar un documento.
+    </small>
+  </div>
+  {% comment %}
+  La pantalla de cambiar la contraseña existía y no estaba enlazada desde
+  ningún sitio: había que saberse la dirección. Aquí es donde se la busca.
+  {% endcomment %}
+  <a href="{% url 'password_change' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-key"></i> Cambiar mi contraseña
+  </a>
 </div>
 
 <div class="row g-3">
