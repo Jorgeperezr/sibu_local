@@ -88,14 +88,29 @@ class Command(BaseCommand):
             return
         if opciones["sin_demo"]:
             self.stdout.write(self.style.SUCCESS("\nBase preparada, sin datos de demostración."))
-            self.stdout.write("Cree una cuenta con: python manage.py createsuperuser")
         else:
             self.stdout.write(
                 self.style.WARNING(
                     "\nBase preparada. Los datos de demostración se omiten con DEBUG=False."
                 )
             )
-            self.stdout.write("Cree una cuenta con: python manage.py createsuperuser")
+        self.stdout.write(f"Cree una cuenta con: {self._como_crear_cuenta()}")
+
+    @staticmethod
+    def _como_crear_cuenta() -> str:
+        """
+        El comando que de verdad hay que escribir AQUÍ.
+
+        En una portable no es `createsuperuser`: es `portable/crear_cuenta.py`,
+        que pide cédula y nombres —`createsuperuser` no los pide y deja la
+        cuenta sin ficha de persona—. Decir el otro dejaba dos instrucciones
+        contradictorias seguidas en la misma pantalla, y la primera era la mala.
+        """
+        from django.conf import settings
+
+        if getattr(settings, "SIBU_PORTABLE", False):
+            return "python portable/crear_cuenta.py"
+        return "python manage.py createsuperuser"
 
     # ------------------------------------------------------------------
     # Detección de cambios en la siembra

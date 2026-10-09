@@ -44,11 +44,51 @@ ARCHIVO_SERVIDOR = RAIZ / "portable" / "servidor.txt"
 
 
 def servidor_central() -> str | None:
-    """La dirección del servidor de la Unidad, si esta carpeta es un cliente."""
+    """
+    La dirección del servidor de la Unidad, si esta carpeta es un cliente.
+
+    Se admite escrita como la escribiría una persona —`sibu.unl.edu.ec`,
+    `10.0.0.5:8000`— y se le pone el esquema. Sin esto, `webbrowser.open`
+    recibía algo que no es una URL y abría una búsqueda o un archivo local:
+    el profesional veía cualquier cosa menos SIBU, y nada que explicara por qué.
+
+    Las líneas que empiezan por `#` se ignoran, para poder dejar la dirección
+    comentada sin borrarla al volver al modo de carpeta sola.
+    """
     if not ARCHIVO_SERVIDOR.exists():
         return None
-    direccion = ARCHIVO_SERVIDOR.read_text(encoding="utf-8").strip()
-    return direccion or None
+    for linea in ARCHIVO_SERVIDOR.read_text(encoding="utf-8").splitlines():
+        direccion = linea.strip()
+        if not direccion or direccion.startswith("#"):
+            continue
+        if "://" not in direccion:
+            # http y no https: una instancia en la red privada no suele tener
+            # certificado, y https contra un servidor que habla http no abre
+            # nada. Con nombre público se escribe el esquema en el archivo.
+            direccion = f"http://{direccion}"
+        return direccion.rstrip("/")
+    return None
+
+
+def responde(url: str, segundos: float = 4.0) -> bool:
+    """
+    ¿Contesta algo en esa dirección?
+
+    En modo cliente los datos no están aquí: si la red privada está caída, el
+    navegador enseña «no se puede conectar» y eso no distingue entre la red, el
+    servidor y una dirección mal escrita. Comprobarlo antes permite decirlo.
+    """
+    from urllib.parse import urlsplit
+
+    partes = urlsplit(url)
+    puerto = partes.port or (443 if partes.scheme == "https" else 80)
+    if not partes.hostname:
+        return False
+    try:
+        with socket.create_connection((partes.hostname, puerto), timeout=segundos):
+            return True
+    except OSError:
+        return False
 
 
 def puerto_libre(preferido: int | None = None) -> int:
@@ -99,6 +139,15 @@ def preparar_carpeta(detallado: bool) -> None:
     call_command("preparar", "--si-cambio", "--sin-demo", verbosity=verbosidad)
     call_command("collectstatic", interactive=False, verbosity=0)
 
+    # Los recordatorios de cita. En un servidor los dispararía Celery beat; en
+    # una portable no hay demonio detrás, así que se repasan al abrir: los que
+    # ya tocaba enviar y nadie envió. Es idempotente —no duplica— y cuesta una
+    # consulta sobre las citas de los próximos dos días.
+    #
+    # Con la portable cerrada nadie avisa a nadie: es el límite de no tener un
+    # servicio corriendo, y está dicho en `docs/PORTABLE.md`.
+    call_command("recordatorios", "--silencioso", verbosity=verbosidad)
+
 
 def hay_cuentas() -> bool:
     """
@@ -147,9 +196,25 @@ def main() -> int:
         print(f"Abriendo el sistema de la Unidad: {central}")
         print()
         print("Esta carpeta es un cliente: los datos están en el servidor, no aquí.")
+        alcanzable = responde(central)
+        if not alcanzable:
+            # Abrir el navegador igual, porque puede ser cosa de un segundo y
+            # el aviso queda detrás; pero con el aviso delante, que es lo que
+            # convierte un «no funciona» en algo que se puede arreglar.
+            print()
+            print("  AVISO: ese servidor no contesta ahora mismo.")
+            print("  Suele ser una de tres cosas:")
+            print("    1. La red privada (NetBird) no está conectada en este")
+            print("       computador. Ábrala y vuelva a intentarlo.")
+            print("    2. El servidor de la Unidad está apagado.")
+            print(f"    3. La dirección de portable/servidor.txt no es la buena: {central}")
+            print()
+            print("  Sus datos no están en esta carpeta, así que no hay nada que")
+            print("  perder: cuando la red vuelva, vuelva a pulsar el icono.")
+            print()
         if not opciones.sin_navegador:
             webbrowser.open(central)
-        return 0
+        return 0 if alcanzable else 1
 
     puerto = puerto_libre(opciones.puerto)
     preparar_django(puerto)

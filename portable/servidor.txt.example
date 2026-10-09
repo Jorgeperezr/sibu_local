@@ -1,1 +1,16 @@
+# Copie este archivo como `servidor.txt` —sin `.example`— para que esta
+# portable sea un CLIENTE: no levanta su propia base, abre el SIBU de la
+# Unidad. Es el modo que mantiene el sello de Psicología: los datos están en
+# una sola instancia, no repartidos en copias de sibu.sqlite3.
+#
+# Vale la dirección tal como se escribe. Si no lleva esquema se asume http,
+# que es lo normal dentro de la red privada:
+#
+#     10.0.0.5:8000
+#     sibu-unidad
+#     https://sibu.unl.edu.ec
+#
+# Las líneas que empiezan por `#` se ignoran, así que se puede comentar la
+# dirección para volver al modo de carpeta sola sin perderla.
+
 https://sibu.unl.edu.ec
