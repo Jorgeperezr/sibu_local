@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Sin acceso — SIBU{% endblock %}
+{% block content %}
+{% comment %}
+Lo que salía aquí era la página por omisión de Django: «403 Forbidden», en
+inglés, en serifa, sobre blanco y sin un enlace de vuelta. Con DEBUG=True no se
+ve —sale la página de depuración—, así que no aparece hasta que el sistema está
+en manos de alguien.
+
+Un 403 en SIBU casi nunca es un intento de colarse: es un enlace guardado de
+cuando se tenía ese servicio, o una pantalla de otro servicio. Decirlo importa,
+porque el sello que lo produce es deliberado y la persona no ha hecho nada mal.
+{% endcomment %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 sibu-titulo mb-3">Esta pantalla no es de su servicio</h1>
+        <p>
+          Su cuenta no tiene acceso a lo que pidió. No es un fallo: en SIBU
+          cada profesional ve el contenido de los servicios que tiene
+          asignados, y el contenido clínico de un servicio no sale de él.
+        </p>
+        <p class="mb-3">
+          Si debería tener acceso, lo concede desde <em>Perfiles</em> quien
+          lleva la <strong>Administración General</strong>. Nadie más puede:
+          asignar un servicio es conceder acceso.
+        </p>
+        <a href="{% url 'inicio' %}" class="btn btn-outline-primary">Volver al inicio</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

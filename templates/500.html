@@ -1,0 +1,56 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Algo falló — SIBU</title>
+  {% comment %}
+  Esta plantilla NO extiende base.html, a propósito.
+
+  Django renderiza 500.html con un contexto VACÍO: sin `request`, sin los
+  procesadores de contexto y sin `user`. Heredar del armazón —que arma la
+  navegación a partir del RBAC del usuario— haría que la página de error
+  fallara al renderizarse, y el fallo de un error es una traza desnuda. Por eso
+  los estilos van aquí dentro y no se carga ningún CSS que pueda faltar.
+  {% endcomment %}
+  <style>
+    :root { --unl-verde: #2e7d32; --tinta: #212529; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--tinta); background: #f8f9fa; margin: 0;
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    }
+    .caja {
+      background: #fff; border-radius: .5rem; padding: 2rem; max-width: 36rem;
+      box-shadow: 0 .125rem .25rem rgba(0,0,0,.075); margin: 1rem;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+    code { background: #f1f3f5; padding: .1rem .3rem; border-radius: .2rem; }
+    a.boton {
+      display: inline-block; margin-top: .5rem; padding: .5rem 1rem;
+      border: 1px solid var(--unl-verde); color: var(--unl-verde);
+      border-radius: .375rem; text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="caja">
+    <h1>Algo falló al preparar esta pantalla</h1>
+    <p>
+      No es culpa de lo que estaba haciendo, y <strong>lo que ya había
+      guardado sigue guardado</strong>: SIBU escribe cada registro de una vez o
+      no lo escribe.
+    </p>
+    <p>
+      Si estaba a mitad de un formulario, vuelva atrás en el navegador: lo que
+      escribió suele seguir ahí.
+    </p>
+    <p>
+      El detalle del fallo quedó anotado en <code>datos/sibu.log</code>, dentro
+      de la carpeta de SIBU. Esa es la línea que hay que enviar a quien lleva
+      el sistema.
+    </p>
+    <a class="boton" href="/">Volver al inicio</a>
+  </div>
+</body>
+</html>

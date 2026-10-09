@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}No existe esa página — SIBU{% endblock %}
+{% block content %}
+{% comment %}
+La de Django dice «Not Found. The requested resource was not found on this
+server.» en inglés y sin salida. Con DEBUG=True sale la lista de rutas, así que
+esto no se ve hasta que el sistema está en manos de alguien.
+{% endcomment %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 sibu-titulo mb-3">Aquí no hay nada</h1>
+        <p>
+          La dirección que pidió no existe en SIBU. Suele ser un enlace
+          guardado de una versión anterior, o un registro que se eliminó.
+        </p>
+        <p class="mb-3">
+          No se ha perdido nada: nada se borra por abrir una dirección.
+        </p>
+        <a href="{% url 'inicio' %}" class="btn btn-outline-primary">Volver al inicio</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

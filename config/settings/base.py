@@ -217,6 +217,10 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 0.25  # 15 minutos
 AXES_RESET_ON_SUCCESS = True
+# La pantalla de bloqueo, en español y dentro de la línea gráfica. La de axes
+# sale en inglés y no dice cuánto hay que esperar; en una portable, donde no
+# hay administrador a quien llamar, eso se lee como «el sistema se rompió».
+AXES_LOCKOUT_CALLABLE = "apps.core.bloqueo.vista_bloqueado"
 
 # ---------------------------------------------------------------------------
 # Parámetros de negocio SIBU

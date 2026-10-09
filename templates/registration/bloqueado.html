@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Acceso bloqueado — SIBU{% endblock %}
+{% block content %}
+{% comment %}
+Lo que salía aquí era la página por omisión de django-axes: «Account locked:
+too many login attempts. Please try again later.» En inglés, fuera de la línea
+gráfica y sin decir cuánto hay que esperar, sobre un sistema que está entero en
+español.
+
+En una portable eso es peor que un detalle: no hay administrador a quien
+llamar. Quien se equivoca cinco veces se queda mirando un error en otro idioma
+sin saber que basta con esperar, y lo razonable es concluir que el sistema se
+rompió.
+{% endcomment %}
+<div class="row justify-content-center">
+  <div class="col-12">
+    <div class="text-center mb-4">
+      <img src="{% static 'img/unl-horizontal.png' %}" alt="Universidad Nacional de Loja"
+           style="max-width:290px;width:100%;height:auto">
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 sibu-titulo mb-3">Acceso bloqueado temporalmente</h1>
+        <p>
+          Se recibieron {{ intentos }} intentos fallidos seguidos, así que el
+          acceso quedó bloqueado. <strong>No ha perdido nada</strong>: ni su
+          cuenta ni sus datos se han tocado.
+        </p>
+        <p class="mb-3">
+          El bloqueo se levanta solo dentro de <strong>{{ espera }}</strong>.
+          Pasado ese rato, vuelva a intentarlo; si acierta la contraseña, el
+          contador se pone a cero.
+        </p>
+        <div class="alert alert-secondary small mb-3">
+          ¿No recuerda la contraseña? Quien administra el sistema puede
+          cambiársela desde <em>Perfiles</em>. Si este SIBU es el suyo y no hay
+          nadie más, se restablece desde la carpeta con
+          <code>python manage.py changepassword SU_USUARIO</code>.
+        </div>
+        <a href="{% url 'login' %}" class="btn btn-outline-primary">Volver a ingresar</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
