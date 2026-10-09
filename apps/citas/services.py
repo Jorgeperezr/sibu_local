@@ -424,3 +424,118 @@ def retirar_franja(franja: Agenda) -> Agenda:
     franja.activa = False
     franja.save(update_fields=["activa", "actualizado_en"])
     return franja
+
+
+# ---------------------------------------------------------- recordatorios
+#
+# El recordatorio T-48h/T-24h (informe 5.2 M17) estaba escrito como task de
+# Celery y **nadie lo ejecutaba**: el planificador es el de base de datos
+# (`django_celery_beat`) y el código no crea ninguna fila de `PeriodicTask`,
+# así que la tarea existía, tenía pruebas y no llegaba a correr nunca. En una
+# portable el problema es de raíz: no hay demonio detrás al que programarle
+# nada.
+#
+# La ventana de ±15 min del task sirve para un planificador que dispara cada
+# cuarto de hora. Para una portable —que se abre a cualquier hora y puede
+# pasar días cerrada— esa ventana no sirve: la cita tendría que caer justo en
+# los 30 minutos del arranque. Lo que hace falta es un repaso: los
+# recordatorios que ya tocaba enviar y nadie envió.
+
+
+def ventanas_recordatorio() -> list[int]:
+    """Las anticipaciones configuradas, de la más lejana a la más próxima."""
+    from django.conf import settings
+
+    horas = settings.SIBU.get("CITA_RECORDATORIOS_HORAS") or []
+    return sorted({int(h) for h in horas}, reverse=True)
+
+
+def _cuenta_del_portal(expediente):
+    """La cuenta del portal vinculada y verificada de este expediente, si la hay."""
+    vinculacion = getattr(expediente, "vinculacion_portal", None)
+    if vinculacion is None or not vinculacion.verificado:
+        return None
+    return vinculacion.usuario
+
+
+def crear_recordatorio(cita: Cita, horas: int, ahora: datetime | None = None) -> bool:
+    """
+    Crea el recordatorio de la ventana `horas` para esta cita.
+
+    Devuelve False si ya existía: es la idempotencia de la que depende poder
+    llamarlo en cada arranque sin llenar la bandeja de duplicados.
+
+    El título dice las horas que **de verdad** faltan, no las de la ventana.
+    En el repaso de una portable no son lo mismo: una cita a 25 horas cae en la
+    ventana de 48 —es la que todavía no se ha enviado— y anunciarla como «en
+    48h» adelantaría la cita un día entero en la cabeza de quien la lee.
+    """
+    from apps.notificaciones.models import Notificacion
+
+    if Notificacion.objects.filter(
+        tipo=f"recordatorio_cita_{horas}h",
+        referencia_tipo="Cita",
+        referencia_id=cita.id,
+    ).exists():
+        return False
+
+    ahora = ahora or timezone.now()
+    persona = cita.expediente.persona
+    faltan = max(0, int(round((cita.fecha_hora - ahora).total_seconds() / 3600)))
+    Notificacion.objects.create(
+        # Si el paciente tiene cuenta del portal verificada, esa es su
+        # identidad dentro del sistema y el aviso va ahí. Sin `usuario`, un
+        # recordatorio con canal IN_APP —el caso de quien no tiene correo
+        # institucional— quedaba dirigido a ningún usuario de la aplicación:
+        # no salía por correo ni aparecía en ninguna bandeja.
+        usuario=_cuenta_del_portal(cita.expediente),
+        tipo=f"recordatorio_cita_{horas}h",
+        titulo=f"Recordatorio de cita en {faltan}h",
+        mensaje=(
+            f"Estimado/a {persona.nombre_completo}: recordamos su cita "
+            f"en {cita.servicio.nombre} el "
+            f"{timezone.localtime(cita.fecha_hora):%d/%m/%Y a las %H:%M}."
+        ),
+        canal=(
+            Notificacion.Canal.EMAIL if persona.correo_institucional else Notificacion.Canal.IN_APP
+        ),
+        destinatario_correo=persona.correo_institucional,
+        destinatario_nombre=persona.nombre_completo,
+        referencia_tipo="Cita",
+        referencia_id=cita.id,
+    )
+    return True
+
+
+def recordatorios_pendientes(ahora: datetime | None = None) -> int:
+    """
+    Los recordatorios que ya tocaba enviar y nadie envió. Devuelve cuántos creó.
+
+    Para cada cita futura se elige **una sola** ventana: la más próxima de las
+    que ya vencieron. A una cita a 20 horas le corresponde la de 24 y no la de
+    48, aunque las dos estén vencidas; la de 48 se habrá creado en un arranque
+    anterior, o no se crea —a 20 horas de la cita, avisar «con 48 de
+    anticipación» no es un recordatorio tardío, es una fecha equivocada—.
+
+    Es idempotente, así que puede correr en cada arranque de la portable.
+    """
+    ahora = ahora or timezone.now()
+    ventanas = ventanas_recordatorio()
+    if not ventanas:
+        return 0
+
+    citas = Cita.objects.filter(
+        fecha_hora__gt=ahora,
+        fecha_hora__lte=ahora + timedelta(hours=ventanas[0]),
+        estado__in={Cita.Estado.RESERVADA, Cita.Estado.CONFIRMADA},
+    ).select_related("expediente__persona", "expediente__vinculacion_portal", "servicio")
+
+    creados = 0
+    for cita in citas:
+        faltan_horas = (cita.fecha_hora - ahora).total_seconds() / 3600
+        aplicables = [h for h in ventanas if faltan_horas <= h]
+        if not aplicables:
+            continue
+        if crear_recordatorio(cita, min(aplicables), ahora=ahora):
+            creados += 1
+    return creados
