@@ -68,3 +68,58 @@ def test_el_filtro_da_la_forma_correcta(cantidad, esperado):
     """Cero va en plural: en español se dice «0 atenciones»."""
     plantilla = Template('{% load textos %}{{ n|plural:"atención,atenciones" }}')
     assert plantilla.render(Context({"n": cantidad})) == esperado
+
+
+# ---------------------------------------------------------------------------
+# La variante que el barrido de arriba NO veía: el plural escrito a mano
+# pegado a una cuenta. No hay `pluralize` por ningún lado, así que la regla
+# anterior no lo encontraba, y «Línea de tiempo (1 atenciones visibles)» estuvo
+# en la pantalla del expediente hasta que se vio en una captura.
+# ---------------------------------------------------------------------------
+
+# Plurales que delatan una cuenta escrita a mano. Solo los que de verdad
+# cuentan cosas: no vale con listar todo lo que acabe en -es.
+PLURALES_DE_CUENTA = (
+    "atenciones",
+    "derivaciones",
+    "notificaciones",
+    "sesiones",
+    "prescripciones",
+    "autorizaciones",
+    "citas",
+    "recetas",
+    "expedientes",
+    "talleres",
+    "personas",
+)
+
+# `{{ algo }} palabras`: una variable seguida de un plural fijo.
+CUENTA_CON_PLURAL_FIJO = re.compile(r"\{\{[^}]+\}\}\s*(" + "|".join(PLURALES_DE_CUENTA) + r")\b")
+
+
+@pytest.mark.parametrize("plantilla", _plantillas(), ids=lambda p: p.name)
+def test_ninguna_cuenta_lleva_el_plural_escrito_a_mano(plantilla):
+    """
+    Una cuenta puede valer 1, y entonces el plural fijo miente.
+
+    `{{ total_atenciones }} atenciones` imprime «1 atenciones». Use
+    `{{ n }} {{ n|plural:"atención,atenciones" }}`.
+    """
+    texto = plantilla.read_text()
+    culpables = sorted({m.group(1) for m in CUENTA_CON_PLURAL_FIJO.finditer(texto)})
+
+    assert culpables == [], (
+        f"{plantilla.name} escribe {culpables} en plural detrás de una cuenta: "
+        'con 1 saldría «1 atenciones». Use `{{ n|plural:"atención,atenciones" }}`.'
+    )
+
+
+def test_el_filtro_resuelve_el_caso_que_se_vio_en_pantalla():
+    """El caso exacto de la captura, para que no vuelva disfrazado."""
+    plantilla = Template(
+        '{% load textos %}{{ n }} {{ n|plural:"atención visible,atenciones visibles" }}'
+    )
+
+    assert plantilla.render(Context({"n": 1})) == "1 atención visible"
+    assert plantilla.render(Context({"n": 2})) == "2 atenciones visibles"
+    assert plantilla.render(Context({"n": 0})) == "0 atenciones visibles"

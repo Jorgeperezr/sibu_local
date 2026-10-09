@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load textos %}
 {% block title %}Tablero — SIBU{% endblock %}
 {% block content %}
 <div class="sibu-cabecera mb-2"><h1 class="h4 sibu-titulo mb-0">Tablero de gestión</h1>
@@ -73,7 +74,8 @@
       <div class="col-6"><div class="card"><div class="card-body py-2 px-3">
         <div class="small text-muted">CPO-D promedio</div>
         <div class="fs-4 fw-semibold">{{ datos.odontologia.promedio }}</div>
-        <div class="small text-muted">{{ datos.odontologia.atenciones_con_indice }} atenciones</div>
+        <div class="small text-muted">{{ datos.odontologia.atenciones_con_indice }}
+          {{ datos.odontologia.atenciones_con_indice|plural:"atención,atenciones" }}</div>
       </div></div></div>
       <div class="col-6"><div class="card"><div class="card-body py-2 px-3">
         <div class="small text-muted">Impacto psicopedagógico</div>

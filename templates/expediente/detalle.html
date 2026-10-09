@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load textos %}
 {% block title %}Expediente {{ expediente.numero_expediente }} · SIBU{% endblock %}
 {% block content %}
 <div class="sibu-cabecera mb-3">
@@ -192,7 +193,8 @@
 
 <div class="card">
   <div class="card-header d-flex justify-content-between">
-    <span>Línea de tiempo ({{ total_atenciones }} atenciones visibles)</span>
+    <span>Línea de tiempo ({{ total_atenciones }}
+      {{ total_atenciones|plural:"atención visible,atenciones visibles" }})</span>
   </div>
   <ul class="list-group list-group-flush">
     {% for at in atenciones %}
