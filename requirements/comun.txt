@@ -1,0 +1,57 @@
+# Lo que necesitan TODAS las formas de correr SIBU: el servidor y la portable.
+#
+# Está separado de `base.txt` porque la portable no puede instalarlo todo. En
+# el computador de un profesional —Windows, sin compilador, a veces sin
+# permisos— cada paquete de más es una forma de que `pip install` aborte
+# entero y la carpeta no llegue a armarse. Lo que solo usa el servidor
+# —PostgreSQL, gunicorn, la firma, Google— vive en `base.txt`.
+
+# --- Núcleo ---
+Django==5.1.4
+djangorestframework==3.15.2
+django-environ==0.11.2
+# WhiteNoise va aquí y no en prod: `config.settings.prod` lo exige y el CI
+# tiene que poder EJERCITAR el almacenamiento de producción —recolectar los
+# estáticos con el manifiesto—. Con la dependencia solo en prod.txt esa prueba
+# no corría donde importa, que es antes de desplegar. Y la portable también lo
+# usa: no hay nginx en una carpeta.
+whitenoise==6.8.2
+
+# --- API / docs ---
+drf-spectacular==0.28.0
+django-filter==24.3
+djangorestframework-simplejwt==5.3.1
+
+# --- Tareas asíncronas ---
+# Celery se instala aunque la portable no tenga demonio detrás: los módulos
+# `tasks.py` hacen `from celery import shared_task` al importarse, así que sin
+# el paquete no arranca ni el servidor ni la carpeta.
+celery==5.4.0
+redis==5.2.1
+django-celery-beat==2.7.0
+
+# --- Seguridad / auth ---
+django-otp==1.5.4
+qrcode==8.0
+argon2-cffi==23.1.0
+django-axes==7.0.0
+django-csp==3.8
+mozilla-django-oidc==4.0.1
+django-guardian==2.4.0
+
+# --- Auditoría / historial ---
+django-simple-history==3.7.0
+
+# --- Cargas de datos (ficha socioeconómica) ---
+pandas==2.2.3
+openpyxl==3.1.5
+
+# --- PDF ---
+# Se instala en las dos, pero WeasyPrint necesita además librerías del sistema
+# (GTK en Windows) que una carpeta portable no lleva. Cuando faltan, el sistema
+# lo dice y ofrece Excel: `apps/core/pdf.py`.
+weasyprint==63.1
+
+# --- Utilidades ---
+Pillow==11.0.0
+python-dateutil==2.9.0.post0

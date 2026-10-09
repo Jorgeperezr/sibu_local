@@ -1,6 +1,14 @@
--r base.txt
+-r comun.txt
 
-# Servidor WSGI de la portable. `waitress` y no `gunicorn` porque gunicorn no
-# funciona en Windows, que es donde van a estar los computadores de la sección.
-# Es Python puro: no hay nada que compilar al armar la carpeta.
+# La portable: SQLite y un servidor WSGI que funcione en Windows.
+#
+# No lleva `psycopg` —no hay PostgreSQL—, ni `gunicorn` —no corre en Windows—,
+# ni `pyhanko` ni las bibliotecas de Google: las integraciones externas van
+# tras un provider y vienen deshabilitadas. Cada paquete que no está es una
+# forma menos de que `pip install` aborte en el computador de un profesional
+# y la carpeta no llegue a armarse.
+
+# Servidor WSGI. `waitress` y no `gunicorn` porque gunicorn no funciona en
+# Windows, que es donde van a estar los computadores de la sección. Es Python
+# puro: no hay nada que compilar al armar la carpeta.
 waitress==3.0.2
