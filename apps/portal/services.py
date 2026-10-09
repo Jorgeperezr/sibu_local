@@ -64,6 +64,23 @@ def solicitar_vinculacion(usuario, cedula: str) -> VinculacionPortal:
             "repórtelo a Bienestar Universitario."
         )
 
+    # Sin SMTP el código no llega a ningún buzón: la vinculación quedaría
+    # creada y el estudiante esperando un correo que se escribió en una carpeta
+    # del computador del profesional. Se para ANTES de crear nada, porque el
+    # código ES la prueba de identidad de todo el portal.
+    #
+    # Va aquí y no en la pantalla porque el portal tiene tres puertas —web, API
+    # y el propio servicio—, y una comprobación en una sola se salta por las
+    # otras dos.
+    from apps.core.correo import hay_correo_real
+
+    if not hay_correo_real():
+        raise ValidationError(
+            "Este sistema no tiene correo configurado, así que no se le puede "
+            "enviar el código de confirmación. La vinculación debe hacerse "
+            "presencialmente en Bienestar Universitario."
+        )
+
     dato = expediente.persona.datos_academicos.order_by("-periodo__fecha_inicio").first()
     correo = getattr(dato, "email_institucional", "") or ""
     dominio = settings.SIBU.get("DOMINIO_CORREO_INSTITUCIONAL", "unl.edu.ec")

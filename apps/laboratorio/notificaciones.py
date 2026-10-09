@@ -78,9 +78,34 @@ def enviar_resultados_al_paciente(orden: OrdenLaboratorio) -> bool:
 
     Devuelve True si se envió. Si la persona no tiene correo institucional
     registrado, no se envía (y queda constancia en la notificación in-app).
+
+    Y si el sistema no tiene SMTP —el caso de la portable, donde el correo se
+    escribe en una carpeta— tampoco se envía, aunque `send_mail` no falle.
+    Esto registraba «Informe enviado a fulano@unl.edu.ec» con estado ENVIADA
+    sobre un mensaje que nadie iba a leer: un resultado de laboratorio dado por
+    entregado sin entregar, que es de lo peor que puede afirmar este sistema.
     """
+    from apps.core.correo import hay_correo_real
+
     persona = orden.atencion.expediente.persona
     correo = persona.correo_institucional
+
+    if correo and not hay_correo_real():
+        Notificacion.objects.create(
+            tipo="resultado_sin_correo_configurado",
+            titulo=f"Resultados por entregar — orden #{orden.pk}",
+            mensaje=(
+                f"Este sistema no tiene correo configurado, así que el informe de "
+                f"{persona.nombre_completo} NO se envió a {correo}. "
+                f"Entréguelo en ventanilla."
+            ),
+            canal=Notificacion.Canal.IN_APP,
+            destinatario_nombre=persona.nombre_completo,
+            referencia_tipo="OrdenLaboratorio",
+            referencia_id=orden.pk,
+        )
+        return False
+
     if not correo:
         Notificacion.objects.create(
             tipo="resultado_sin_correo",
