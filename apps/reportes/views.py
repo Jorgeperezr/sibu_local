@@ -14,7 +14,7 @@ from django.utils import timezone
 from apps.auditoria.models import LogAuditoria
 from apps.core.mensajes import detalle_de_error
 from apps.core.models import Servicio
-from apps.core.pdf import render_pdf
+from apps.core.pdf import PdfNoDisponible, render_pdf
 from apps.usuarios import rbac
 from apps.usuarios.models import Rol
 from apps.usuarios.rbac import servicios_del_usuario
@@ -73,15 +73,22 @@ def exportar_pdf(request):
         detalle={"desde": str(desde or ""), "hasta": str(hasta or "")},
     )
 
-    pdf = render_pdf(
-        "reportes/tablero_pdf.html",
-        {
-            "datos": services.tablero_general(desde, hasta),
-            "desde": desde,
-            "hasta": hasta,
-            "k_minimo": services.K_MINIMO,
-        },
-    )
+    try:
+        pdf = render_pdf(
+            "reportes/tablero_pdf.html",
+            {
+                "datos": services.tablero_general(desde, hasta),
+                "desde": desde,
+                "hasta": hasta,
+                "k_minimo": services.K_MINIMO,
+            },
+        )
+    except PdfNoDisponible as exc:
+        # Una instalación sin WeasyPrint —el caso de una portable en Windows—
+        # no es un fallo del sistema: se dice y se devuelve a la pantalla, que
+        # tiene los mismos datos.
+        messages.error(request, str(exc))
+        return redirect("reportes:tablero")
     respuesta = HttpResponse(pdf, content_type="application/pdf")
     nombre = f"reporte-gestion-{timezone.localdate():%Y%m%d}.pdf"
     respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'
@@ -280,10 +287,14 @@ def informe_servicio_pdf(request):
         servicio=servicio.codigo,
     )
 
-    pdf = render_pdf(
-        "reportes/informe_servicio_pdf.html",
-        {"datos": datos, "anexos": anexos, "eleccion": eleccion},
-    )
+    try:
+        pdf = render_pdf(
+            "reportes/informe_servicio_pdf.html",
+            {"datos": datos, "anexos": anexos, "eleccion": eleccion},
+        )
+    except PdfNoDisponible as exc:
+        messages.error(request, str(exc))
+        return redirect("reportes:informe_servicio")
     respuesta = HttpResponse(pdf, content_type="application/pdf")
     nombre = f"informe-demografico-{servicio.codigo}-{timezone.localdate():%Y%m%d}.pdf"
     respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'

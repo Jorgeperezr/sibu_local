@@ -3,8 +3,9 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views.generic import TemplateView
+from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.firma import api as firma_api
@@ -44,6 +45,23 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
 ]
+
+# Los adjuntos los sirve Django en desarrollo y en la portable. En producción
+# es trabajo de nginx; en una portable NO HAY nginx, y sin esto el profesional
+# sube una evidencia a un taller y después no puede abrirla: 404 sobre un
+# archivo que está en su propio disco.
+#
+# No vale el atajo `static()` de Django: devuelve una lista VACÍA cuando
+# `DEBUG=False`, así que envolverlo en una condición propia no hace nada. Lo
+# escribí así primero y la prueba lo delató, que es justo para lo que está.
+if getattr(settings, "SIBU_PORTABLE", False):
+    urlpatterns += [
+        re_path(
+            r"^{}(?P<path>.*)$".format(settings.MEDIA_URL.lstrip("/")),
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        )
+    ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

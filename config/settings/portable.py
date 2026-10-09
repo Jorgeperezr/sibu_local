@@ -47,6 +47,14 @@ CARPETA_DATOS.mkdir(parents=True, exist_ok=True)
 
 DEBUG = False
 
+# Una portable lleva DEBUG=False y NO es un servidor de producción: es una
+# carpeta en el computador de un profesional. Sin este indicador,
+# `check --deploy` llamaba errores a las tres cosas que aquí son correctas —la
+# base en SQLite, `ALLOWED_HOSTS` solo con localhost y `MEDIA_ROOT` dentro de
+# la carpeta—, y un check que grita donde no hay problema deja de leerse donde
+# sí lo hay.
+SIBU_PORTABLE = True
+
 # Solo el propio computador. El launcher abre el navegador en 127.0.0.1.
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 CSRF_TRUSTED_ORIGINS = [

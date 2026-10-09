@@ -2,8 +2,9 @@
 Comprobaciones de despliegue ejecutables.
 
 Una lista en prosa se lee una vez y se olvida; estos checks corren en cada
-`manage.py check --deploy` y en el CI. Se activan solo con DEBUG=False, que es
-lo más parecido a "esto es producción" que el código puede saber.
+`manage.py check --deploy` y en el CI. Se activan con DEBUG=False y sin el
+indicador de modo portable, que es lo más parecido a "esto es producción" que
+el código puede saber.
 
     python manage.py check --deploy --fail-level WARNING
 """
@@ -22,6 +23,18 @@ HOSTS_DE_DESARROLLO = frozenset(
 
 
 def _es_produccion() -> bool:
+    """
+    ¿Esto es un servidor de producción?
+
+    `DEBUG=False` no basta desde que existe el modo portable, que también lo
+    lleva y NO es un servidor: es una carpeta en el computador de un
+    profesional. Preguntando solo por DEBUG, `check --deploy` llamaba errores
+    a las tres cosas que en una portable son correctas —la base en SQLite,
+    `ALLOWED_HOSTS` solo con localhost y `MEDIA_ROOT` dentro de la carpeta— y
+    un check que grita donde no hay problema deja de leerse donde sí lo hay.
+    """
+    if getattr(settings, "SIBU_PORTABLE", False):
+        return False
     return not settings.DEBUG
 
 

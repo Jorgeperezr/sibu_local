@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.pdf import PdfNoDisponible
 from apps.expediente.models import Atencion
 from apps.usuarios.decorators import verificar_acceso_atencion
 
@@ -39,6 +40,12 @@ def solicitar(request, atencion_id):
         )
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
+        return redirect("expediente:detalle", pk=atencion.expediente_id)
+    except PdfNoDisponible as exc:
+        # Sin WeasyPrint no hay documento que firmar. Es una condición de la
+        # instalación —una portable en Windows no lleva las librerías del
+        # sistema que necesita—, no un fallo: se dice y se vuelve.
+        messages.error(request, str(exc))
         return redirect("expediente:detalle", pk=atencion.expediente_id)
     return redirect("firma:panel", pk=solicitud.pk)
 
